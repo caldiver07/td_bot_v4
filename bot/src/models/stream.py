@@ -52,8 +52,18 @@ class Stream():
         self.chart_38 = Chart(redis_client=self.redis_client)
         self.chart_39 = Chart(redis_client=self.redis_client)
         self.chart_40 = Chart(redis_client=self.redis_client)
+        self.chart_41 = Chart(redis_client=self.redis_client)
+        self.chart_42 = Chart(redis_client=self.redis_client)
+        self.chart_43 = Chart(redis_client=self.redis_client)
+        self.chart_44 = Chart(redis_client=self.redis_client)
+        self.chart_45 = Chart(redis_client=self.redis_client)
+        self.chart_46 = Chart(redis_client=self.redis_client)
+        self.chart_47 = Chart(redis_client=self.redis_client)
+        self.chart_48 = Chart(redis_client=self.redis_client)
+        self.chart_49 = Chart(redis_client=self.redis_client)
+        self.chart_50 = Chart(redis_client=self.redis_client)
         
-        self.chart_list = [self.chart_1, self.chart_2, self.chart_3, self.chart_4, self.chart_5, self.chart_6, self.chart_7, self.chart_8, self.chart_9, self.chart_10, self.chart_11, self.chart_12, self.chart_13, self.chart_14, self.chart_15, self.chart_16, self.chart_17, self.chart_18, self.chart_19, self.chart_20, self.chart_21, self.chart_22, self.chart_23, self.chart_24, self.chart_25, self.chart_26, self.chart_27, self.chart_28, self.chart_29, self.chart_30, self.chart_31, self.chart_32, self.chart_33, self.chart_34, self.chart_35, self.chart_36, self.chart_37, self.chart_38, self.chart_39, self.chart_40]
+        self.chart_list = [self.chart_1, self.chart_2, self.chart_3, self.chart_4, self.chart_5, self.chart_6, self.chart_7, self.chart_8, self.chart_9, self.chart_10, self.chart_11, self.chart_12, self.chart_13, self.chart_14, self.chart_15, self.chart_16, self.chart_17, self.chart_18, self.chart_19, self.chart_20, self.chart_21, self.chart_22, self.chart_23, self.chart_24, self.chart_25, self.chart_26, self.chart_27, self.chart_28, self.chart_29, self.chart_30, self.chart_31, self.chart_32, self.chart_33, self.chart_34, self.chart_35, self.chart_36, self.chart_37, self.chart_38, self.chart_39, self.chart_40, self.chart_41, self.chart_42, self.chart_43, self.chart_44, self.chart_45, self.chart_46, self.chart_47, self.chart_48, self.chart_49, self.chart_50]
 
         ### Thresholds and parameters.........
         self.pause_threshold = 8                
@@ -208,6 +218,16 @@ class Stream():
             'chart_38': self.chart_38.to_dict(),
             'chart_39': self.chart_39.to_dict(),
             'chart_40': self.chart_40.to_dict(),
+            'chart_41': self.chart_41.to_dict(),
+            'chart_42': self.chart_42.to_dict(),
+            'chart_43': self.chart_43.to_dict(),
+            'chart_44': self.chart_44.to_dict(),
+            'chart_45': self.chart_45.to_dict(),
+            'chart_46': self.chart_46.to_dict(),
+            'chart_47': self.chart_47.to_dict(),
+            'chart_48': self.chart_48.to_dict(),
+            'chart_49': self.chart_49.to_dict(),
+            'chart_50': self.chart_50.to_dict(),
         }
         ### Order output by chart.rank
         # Sort charts by rank

@@ -70,8 +70,8 @@
 .status-table th, .status-table td {
     padding-left: 8px;
     padding-right: 8px;
-    padding-top: 4px;
-    padding-bottom: 4px;
+    padding-top: 1px;
+    padding-bottom: 1px;
     text-align: left;
     border: 1px solid #444444;
     font-size: 12px;

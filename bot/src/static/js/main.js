@@ -11,7 +11,7 @@ let botWorker = null;
 let botCheckStatus = false;
 let accountInfoInterval = null;
 
-export let numberOfCharts = 40;
+export let numberOfCharts = 50;
 
 export function disableTradeButton() {
     const goButton = document.getElementById('go-button');
@@ -184,7 +184,9 @@ export function updateStatusInfo(data){
 window.addEventListener('load', () => {
 
     
-    ui.loadChartSettings();
+    ui.loadChartSettings().then(() => {
+        status.restoreTradeOrderState();
+    });
     account.fetchAccountInfo();
 
     /*update the setting from local store and then push to backend...*/
@@ -200,8 +202,6 @@ window.addEventListener('load', () => {
     settings.restoreClosingTimeout();
 
     settings.restorePausedChartsTimeout();
-
-    status.restoreTradeOrderState();
 
     ui.updateSettings();
 });

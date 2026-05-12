@@ -61,7 +61,7 @@ export function loadChartSettings(){
 
     const payload = {};
 
-    fetch('/load-chart-settings/', {
+    return fetch('/load-chart-settings/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

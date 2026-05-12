@@ -234,8 +234,8 @@ export function restoreTradeOrderState() {
     const payloads = [];
     for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key && key.startsWith('tradeOrder_')) {
-            const symbol = key.replace('tradeOrder_', '');
+        if (key && key.startsWith('v4_tradeOrder_')) {
+            const symbol = key.replace('v4_tradeOrder_', '');
             const isTrade = localStorage.getItem(key) === 'true';
             payloads.push({
                 'symbol': symbol,
