@@ -1,0 +1,102 @@
+/* positions secion */
+.positions-section {
+   display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    margin-top: 5px;
+    margin-bottom: 5px;
+    margin-left: 5px;
+    padding: 10px;
+    border: 1px solid #565656;
+    background-color: #262626;
+    border-radius: 5px;
+}
+.positions-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #565656;
+}
+.positions-refresh {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+.positions-title {
+    color: #b9b9b9;
+    font-weight: bold;
+}
+.positions-timestamp {
+    font-size: 12px;
+    color: #888888;
+    font-style: italic;
+    text-align: right;
+}
+.positions-name {
+    font-size: 14px;
+    font-weight: bold;
+    color: #888888;
+    padding: 2px 2px;
+}
+.positions-value {
+    font-size: 14px;
+    font-weight: normal;
+    color: #828282;
+    padding: 1px 1px;
+}
+.positions-button {
+    font-size: 12px;
+    font-weight: bold;
+    width: 70px; /* Set a fixed width */
+    height: 23px; /* Set a fixed height */
+    color: #8f8f8f; /* White text */
+    background-color: #484848; /* Green background */
+    border: 1px solid #375f39; /* Darker green border */
+    border-radius: 5px; /* Rounded corners */
+    padding: 5px; /* Padding for a larger clickable area */
+    cursor: pointer; /* Pointer cursor on hover */
+    transition: background-color 0.3s ease, transform 0.2s ease; /* Smooth hover effect */
+}
+
+/* positions table */
+.positions-table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: #1e1e1e;
+    border: 1px solid #444444;
+}
+.positions-table th, .positions-table td {
+    padding: 8px;
+    text-align: left;
+    border: 1px solid #444444;
+    font-size: 12px;
+}
+
+.positions-table th {
+    background-color: #333333;
+    font-weight: bold;
+}
+
+.positions-table tr:nth-child(even) {
+    background-color: #2a2a2a;
+}
+
+.positions-table tr:hover {
+    background-color: #3a3a3a;
+}
+.positions-table td.positions-side {
+    color: var(--color-blue); /* Blue for default/unknown status */
+    font-weight: bold;
+}
+.positions-table td {
+    color: #888888;
+    font-weight: bold;
+}
+.positions-table td.positions-symbol {
+    color:#969595;
+    font-weight: bold;
+}
+

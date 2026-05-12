@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trading BOT V3</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/left.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/right.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/symbols.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/charts.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/orders.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/status.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/positions.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/account.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/settings.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="left-section">
+            <div class="title-section">
+                <div class="title">Trading BOT V3</div>
+            </div>
+            <div class="account-info" id="account-info">
+                <div class="account-header">
+                    <div class="account-title">
+                        <span class="account-title">Account:</span>
+                        <select id="account-select" name="account-select" class="account-value">
+                            <option value="">-- Select Account --</option>
+                            <!-- Options will be populated by JavaScript -->
+                        </select>
+                    </div>
+                    <div class="account-refresh">
+                        <div id="account-timestamp" class="account-timestamp">Updated: 00/00/0000, 00:00:00 AM</div>
+                        <button type="button" class="account-button" id="get-account-info">Refresh</button>
+                    </div>
+                </div>
+                <div class="account-name">Current Value:
+                    <span id="account-value" class="account-value"></span>
+                </div>
+                <div class="account-name">Buying Power:
+                    <span id="buying-power" class="account-value"></span>
+                </div>
+                <div class="account-name">Day Change:
+                    <span id="day-change" class="account-value"></span>
+                </div>
+            </div>
+            <div class="stream-controls">
+                <button type="button" id="go-button" class="go-btn">Go</button>
+            </div>
+            <div class="stats">
+                <div class="left-title">Stats</div>
+                <div class="stats-section-1">
+                    <div class="stat-row"><span class="stat-label">Order:</span> <strong id="orders-count">0</strong></div>
+                    <div class="stat-row"><span class="stat-label">Paused Charts:</span> <strong id="paused-charts-count">0</strong></div>
+                </div>
+                <div class="stats-section-2">
+                </div>
+            </div>
+            <div class="settings-section">
+                <div class="settings-header">
+                    <div class="settings-title">Settings</div>
+                </div>
+                <div class="settings-row">
+                    <div class="settings-control">
+                        <label for="auto-trading">
+                            &nbsp;<input type="checkbox" id="auto-trading" onchange="toggleAutoTrading()">
+                            <span class="auto-trading-label">Auto Trading:</span>
+                            <span class="auto-trading-status off" id="auto-trading-status">OFF</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="settings-row">
+                    <div class="settings-control">
+                        <label for="order-timeout" title="Time out value for opening order">&nbsp;&nbsp;Order (ms):</label>
+                        <input type="number" id="order-timeout" placeholder="10000" value="10000" min="1000" step="1000" onchange="saveOrderTimeout()">
+                    </div>
+                    <div class="settings-control">
+                        <label for="group-order-multiplier">Group Mult (cnt):</label>
+                        <input type="number" id="group-order-multiplier" placeholder="1.5" value="1.5" min="0" step="0.1" onchange="saveGroupOrderMultiplier()">
+                    </div>
+                    <div class="settings-control">
+                        <label for="closing-order-multiplier">Closing Mult (cnt):</label>
+                        <input type="number" id="closing-order-multiplier" placeholder="2.0" value="1.5" min="0" step="0.1" onchange="saveClosingOrderMultiplier()">
+                    </div>
+                    <div class="settings-control">
+                        <label for="closing-timeout" title="Time out value for closing order">Close (ms):</label>
+                        <input type="number" id="closing-timeout" placeholder="6000" value="6000" min="1000" step="1000" onchange="saveClosingTimeout()">
+                    </div>
+                </div>
+                <div class="settings-row">
+                    <div class="settings-control">
+                        <label for="paused-charts-timeout" title="Timeout for charts that are paused due to performance (minutes)">&nbsp;&nbsp;PC Timeout (min):</label>
+                        <input type="number" id="paused-charts-timeout" placeholder="10" value="10" min="0" step="1" onchange="savePausedChartsTimeout()">
+                    </div>
+                </div>
+                <div class="settings-row">
+                    <div class="settings-control">
+                        <label for="opening-fill-threshold">&nbsp;&nbsp;Opening Fill (pct):</label>
+                        <input type="number" id="opening-fill-threshold" placeholder="50" value="50" min="0" step="1" onchange="saveOpeningFillThreshold()">
+                    </div>
+                    <div class="settings-control">
+                        <label for="closing-fill-threshold">Closing Fill (pct):</label>
+                        <input type="number" id="closing-fill-threshold" placeholder="50" value="50" min="0" step="1" onchange="saveClosingFillThreshold()">
+                    </div>
+                    <div class="settings-control">
+                        <label for="opening-order-threshold">Opening Order (cnt):</label>
+                        <input type="number" id="opening-order-threshold" placeholder="10" value="10" min="0" step="1" onchange="saveOpeningOrderThreshold()">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="positions-section">
+                <div class="positions-header">
+                    <div class="positions-title">
+                        <span class="positions-title">Positions:</span>
+                    </div>
+                    <div class="positions-refresh">
+                        <div id="positions-timestamp" class="positions-timestamp">Updated: 00/00/0000, 00:00:00 AM</div>
+                        <button type="button" class="positions-button" id="get-positions">Refresh</button>
+                    </div>
+                </div>
+                <div id="positions-info">
+                    <table class="positions-table">
+                        <thead>
+                            <tr>
+                                <th>Symbol</th>
+                                <th>Quantity</th>
+                                <th>Market Value</th>
+                                <th>Side</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="4" class="table-empty-message">No positions found</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="orders-section">
+                <div class="orders-header">
+                    <div class="orders-title">
+                        <span class="orders-title">Orders:</span>
+                    </div>
+                    <div class="orders-refresh">
+                        <div id="orders-timestamp" class="orders-timestamp">Updated: 00/00/0000, 00:00:00 AM</div>
+                        <button type="button" class="orders-button" id="get-orders">Refresh</button>
+                    </div>
+                </div>
+                <div id="orders-info">
+                    <table class="orders-table">
+                        <thead>
+                            <tr>
+                                <th>Symbol</th>
+                                <th>Quantity</th>
+                                <th>Price</th>
+                                <th>Side</th>
+                                <th>Type</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="8" class="table-empty-message">No working orders found</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+        <div class="right-section">
+            <div class="status-section">
+                <div class="status-header">
+                    <div class="status-title">
+                        <span class="status-title">Status:</span>
+                    </div>
+                    <div class="status-refresh">
+                        <div id="status-timestamp" class="status-timestamp">Updated: 00/00/0000, 00:00:00 AM</div>
+                        <button type="button" class="status-button" id="get-status">Refresh</button>
+                    </div>
+                </div>
+                <div id="status" class="status">
+                    <div class="status-field">
+                        <span class="status-label">Phase:</span>
+                        <span id="phase-value" class="status-value">Paused</span>
+                    </div>
+                    <div class="status-field">
+                        <span class="status-label">Status:</span>
+                        <span id="status-value" class="status-value">Paused</span>
+                    </div>
+                    <div class="status-field">
+                        <span class="status-label">Sub Status:</span>
+                        <span id="sub-status-value" class="status-value">Paused</span>
+                    </div>
+                    <div class="status-field">
+                        <span class="status-label">Message:</span>
+                        <span id="message-value" class="status-message-value"></span>
+                    </div>
+                </div>
+                <div id="status-info">
+                    <table class="status-table">
+                        <thead>
+                            <tr>
+                                <th>Symbol</th>
+                                <th>Rank</th>
+                                <th>Algo</th>
+                                <th>Paused</th>
+                                <th>Time</th>
+                                <th>Open Bot</th>
+                                <th>Reason</th>
+                                <th>Open Fill</th>
+                                <th>Open Fill %</th>
+                                <th>Open Status</th>
+                                <th>Close Bot</th>
+                                <th>Close Fill</th>
+                                <th>Close Fill %</th>
+                                <th>Close Status</th>
+                                <th>Position</th>
+                                <th>Spoofing</th>
+                                <th>Smart Dir</th>
+                                <th>Trend</th>
+                                <th>Vol</th>
+                                <th>L2 Vol</th>
+                                <th>TTC</th>
+                                <th>Bid</th>
+                                <th>Ask</th>
+                                <th>Trade</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="21" class="table-empty-message">No status information found</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename='js/settings.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename='js/account.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename='js/positions.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename='js/orders.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename='js/charts.js') }}"></script>
+</html>

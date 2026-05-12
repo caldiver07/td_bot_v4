@@ -1,0 +1,27 @@
+# Use an official Python runtime as a parent image
+FROM python:3.13
+
+# Set the working directory in the container
+WORKDIR /app
+
+# Copy the requirements file into the container at /app
+COPY requirements.txt .
+
+# Install any needed packages specified in requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the rest of the application's code into the container
+COPY . .
+
+# Make port 5030 available to the world outside this container
+EXPOSE 5030
+
+# Define environment variables
+ENV FLASK_APP=run.py
+ENV FLASK_RUN_HOST=0.0.0.0
+
+# Run the Flask development server. If you have a custom init command, add it here
+# or run it manually before starting the container.
+
+# Run Gunicorn with multiple workers
+CMD ["gunicorn", "--bind", "0.0.0.0:5030", "--workers", "1", "--threads", "4", "--timeout", "120", "bot.app:app"]

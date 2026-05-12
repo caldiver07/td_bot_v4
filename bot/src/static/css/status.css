@@ -1,0 +1,359 @@
+.status-section {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-top: 5px;
+    margin-bottom: 5px;
+    margin-left: 5px;
+    padding: 10px;
+    border: 1px solid #565656;
+    background-color: #262626;
+    border-radius: 5px;
+}
+.status-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #565656;
+}
+.status-refresh {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+.status-title {
+    color: #b9b9b9;
+    font-weight: bold;
+}
+.status-timestamp {
+    font-size: 12px;
+    color: #888888;
+    font-style: italic;
+    text-align: right;
+}
+.status-name {
+    font-size: 14px;
+    font-weight: bold;
+    color: #888888;
+    padding: 2px 2px;
+}
+.status-value {
+    font-size: 14px;
+    font-weight: normal;
+    color: #828282;
+    padding: 1px 1px;
+}
+.status-button {
+    font-size: 12px;
+    font-weight: bold;
+    width: 70px;
+    height: 23px;
+    color: #8f8f8f;
+    background-color: #484848;
+    border: 1px solid #375f39;
+    border-radius: 5px;
+    padding: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+/* Status table */
+.status-table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: #1e1e1e;
+    border: 1px solid #444444;
+    table-layout: fixed;
+}
+.status-table th, .status-table td {
+    padding-left: 8px;
+    padding-right: 8px;
+    padding-top: 4px;
+    padding-bottom: 4px;
+    text-align: left;
+    border: 1px solid #444444;
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Base column widths for stable layout */
+.status-table th.status-symbol, .status-table td.status-symbol { width: 7%; }
+.status-table th.rank, .status-table td.rank { width: 2%; }
+
+.status-table th.algo, .status-table td.algo { width: 4%; }
+
+.status-table th.paused, .status-table td.paused { width: 4%; }
+.status-table th.time, .status-table td.time { width: 2%; }
+.status-table th.open-bot, .status-table td.open-bot { width: 4%; }
+.status-table th.reason, .status-table td.reason { width: 4%; }
+.status-table th.open-fill, .status-table td.open-fill { width: 7%; }
+.status-table th.open-fill-pct, .status-table td.open-fill-pct { width: 5%; }
+.status-table th.open-status, .status-table td.open-status { width: 5%; }
+.status-table th.close-bot, .status-table td.close-bot { width: 5%; }
+.status-table th.close-fill, .status-table td.close-fill { width: 7%; }
+.status-table th.close-fill-pct, .status-table td.close-fill-pct { width: 5%; }
+.status-table th.close-status, .status-table td.close-status { width: 5%; }
+.status-table th.position, .status-table td.position { width: 4%; }
+.status-table th.spoofing, .status-table td.spoofing { width: 3%; }
+.status-table th.smart-dir, .status-table td.smart-dir { width: 4%; }
+.status-table th.trend, .status-table td.trend { width: 4%; }
+.status-table th.volume, .status-table td.volume { width: 2%; }
+.status-table th.l2-volume, .status-table td.l2-volume { width: 4%; }
+.status-table th.ttc, .status-table td.ttc { width: 3%; }
+.status-table th.bid, .status-table td.bid { width: 4%; }
+.status-table th.ask, .status-table td.ask { width: 4%; }
+.status-table th.trade, .status-table td.trade { width: 5%; text-align: center; }
+
+.status-table th {
+    background-color: #333333;
+    font-weight: bold;
+}
+
+.status-table tr:nth-child(even) {
+    background-color: #2a2a2a;
+}
+
+.status-table tr:hover {
+    background-color: #3a3a3a;
+}
+
+.status-table td.open-status[data-status="FILLED"],
+.status-table td.close-status[data-status="FILLED"] {
+    color: var(--color-green); /* Green for filled orders */
+    font-weight: bold;
+}
+
+.status-table td.open-status[data-status="CANCELED"],
+.status-table td.close-status[data-status="CANCELED"] {
+    color: var(--color-red); /* RED for canceled orders */
+    font-weight: bold;
+}
+
+.status-table td.spoofing[data-status="yes"] {
+    color: var(--color-red); /* Red */
+    font-weight: bold;
+}
+
+.status-table td.spoofing[data-status="no"] {
+    color: #807f7f; /* Gray */
+    font-weight: bold;
+}
+
+.status-table td.smart-dir[data-status="long"] {
+    color: var(--color-green); /* Green */
+    font-weight: bold;
+}
+
+.status-table td.smart-dir[data-status="short"] {
+    color: var(--color-red); /* Red */
+    font-weight: bold;
+}
+
+.status-table td.smart-dir[data-status="no_trade"] {
+    color: #807f7f; /* Gray */
+    font-weight: bold;
+}
+
+.status-table td.trend[data-status="FLAT"],
+.status-table td.trend[data-status="flat"] {
+    color: var(--color-green); /* Green */
+    font-weight: bold;
+}
+
+.status-table td.trend[data-status="VOLATILE"],
+.status-table td.trend[data-status="volatile"] {
+    color: var(--color-red); /* Red */
+    font-weight: bold;
+}
+
+.status-table td.trend[data-status="UP"],
+.status-table td.trend[data-status="up"] {
+    color: var(--color-blue); /* Blue */
+    font-weight: bold;
+}
+
+.status-table td.trend[data-status="DOWN"],
+.status-table td.trend[data-status="Down"],
+.status-table td.trend[data-status="down"] {
+    color: var(--color-yellow); /* Yellow */
+    font-weight: bold;
+}
+
+.status-table td.bid {
+    color: var(--color-green); /* Green for bid */
+    font-weight: bold;
+}
+
+.status-table td.ask {
+    color: var(--color-red); /* Red for ask */
+    font-weight: bold;
+}
+
+.status-table td {
+    color: var(--color-blue); /* Blue for default/unknown status */
+    font-weight: bold;
+}
+
+.status-table td.status-symbol {
+    color:#969595;
+    font-weight: bold;
+}
+
+.status-table td.status-symbol.trade-active {
+    color: var(--color-green); /* green text */
+}
+
+.status-table td.open-bot[data-status="Ready"],
+.status-table td.close-bot[data-status="Ready"] {
+    color: #807f7f; /* Gray for ready bot */
+    font-weight: bold;
+}
+.status-table td.open-bot[data-status="Paused"],
+.status-table td.close-bot[data-status="Paused"] {
+    color: var(--color-yellow); /* Yellow for paused bot */
+    font-weight: bold;
+}
+
+.status {
+    display: flex;
+    gap: 10px;
+    padding: 6px;
+    background-color: #252525;
+    border-radius: 6px;
+
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.status-field {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    min-width: 0;
+    flex-shrink: 0;
+}
+
+.status-field:last-child {
+    flex: 1;
+
+    min-width: 0;
+    overflow: hidden;
+}
+.status-label {
+    font-size: 14px;
+    color: #aaaaaa;
+    font-weight: 500;
+
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.status-value {
+    font-size: 14px;
+    color: var(--color-blue);
+    font-weight: bold;
+    padding: 4px 12px;
+    background-color: #1e1e1e;
+    border-radius: 4px;
+    border: 1px solid #444;
+    height: 15px;
+    min-width: 25px;
+
+    flex-shrink: 0;
+}
+
+.status-message-value {
+    font-size: 12px;
+    color: var(--color-blue);
+    font-weight: bold;
+    padding: 4px 8px;
+    background-color: #1e1e1e;
+    border-radius: 4px;
+    border: 1px solid #444;
+    /* flex: 1; */
+    min-height: 15px;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
+}
+.status-message-value[data-message="MARKET_CLOSED"] {
+    color: var(--color-red);
+}
+.status-message-value[data-message="Auto trading is disabled"],
+.status-message-value[data-message="PAUSED_CHARTS_THRESHOLD"] {
+    color: var(--color-yellow);
+}
+
+.status-table td.paused[data-status="Paused"] { color: var(--color-yellow); font-weight: bold; }
+.status-table td.paused[data-status="Active"] { color: inherit; }
+
+.status-table td.reason:not([data-status=""]) {
+    color: var(--color-red);
+    font-weight: bold;
+}
+.status-table td.reason[data-status="volatility"],
+.status-table td.reason[data-status="Volatility"] {
+    color: var(--color-yellow) !important;
+}
+
+
+
+
+.symbol-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+.symbol-name {
+    text-align: left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.reset-stats-btn {
+    background-color: #3a3a3a;
+    border: 1px solid #565656;
+    color: #e0e0e0;
+    border-radius: 3px;
+    padding: 0 4px;
+    font-size: 10px;
+    cursor: pointer;
+    font-weight: bold;
+    min-width: fit-content;
+    height: 16px;
+    line-height: normal;
+    transition: background-color 0.2s, color 0.2s;
+}
+.reset-stats-btn:hover {
+    background-color: var(--color-red);
+    color: #fff;
+    border-color: #fff;
+}
+
+.status-table td.time, .status-table td.open-fill, .status-table td.close-fill { color: #807f7f; align-items: center; border: 1px solid #444444; }
+
+.status-table td.volume,
+.status-table td.l2-volume,
+.status-table td.ttc {
+    color: #807f7f;
+}
+
+.status-table td.ttc[data-status="high"] {
+    color: var(--color-red);
+    font-weight: bold;
+}
+
+
+
+.status-table tr.status-row-highlight, .status-table tr.status-row-highlight:nth-child(even) {
+    background-color: rgba(255, 255, 0, 0.15);
+}
+

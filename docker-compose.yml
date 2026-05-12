@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: DockerFile
+    ports:
+      - "5030:5030"
+    environment:
+      - FLASK_APP=bot/app.py
+      - FLASK_ENV=production
+      - app_key=YBVCsLydRWIfs0C4AdXFS2ctnIa2VcBj
+      - app_secret=j1j3I1Lnjs6MSjYh
+      - callback_url=https://127.0.0.1
+      - ELASTICSEARCH_URL=http://host.docker.internal:9200
+    volumes:
+      - ./tokens:/app/tokens
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

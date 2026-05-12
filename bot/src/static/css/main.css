@@ -1,0 +1,95 @@
+:root {
+    --color-green: #4caf4fbb;
+    --color-red: #f44336c0;
+    --color-yellow: #ffc107c0;
+    --color-blue: #4a91e2c0;
+}
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #262626;
+    color: #e0e0e0; /* Light text color */
+}
+.container {
+    display: flex;
+    flex-direction: row;
+    height: 100vh;
+    overflow: hidden;
+    padding: 0;
+}
+
+input[type="text"] {
+    font-size: 16px; /* Adjust font size */
+    padding: 10px; /* Add padding inside the input box */
+    border: 1px solid #565656; /* Border color */
+    border-radius: 5px; /* Rounded corners */
+    background-color: #262626; /* Dark background */
+    color: #ffffff; /* White text color */
+    width: 100%; /* Full width */
+    max-width: 300px; /* Limit the maximum width */
+    box-sizing: border-box; /* Include padding and border in width */
+    margin-bottom: 10px; /* Add spacing below the input */
+    transition: border-color 0.3s ease; /* Smooth transition for border color */
+}
+
+input[type="text"], select {
+    font-size: 16px;
+    padding: 10px;
+    border: 1px solid #565656;
+    border-radius: 5px;
+    background-color: #262626; /* Dark background */
+    color: #ffffff; /* White text */
+    width: 100%; /* Full width */
+    max-width: 300px; /* Limit the maximum width */
+    box-sizing: border-box; /* Include padding and border in width */
+    margin-bottom: 10px; /* Add spacing below the input */
+    transition: border-color 0.3s ease; /* Smooth transition for border color */
+}
+/* Global scrollbar styling */
+::-webkit-scrollbar {
+    width: 12px;
+}
+
+::-webkit-scrollbar-track {
+    background: #1e1e1e; /* Scrollbar background */
+}
+
+::-webkit-scrollbar-thumb {
+    background: #444444; /* Scrollbar thumb */
+    border-radius: 6px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #555555; /* Scrollbar thumb on hover */
+}
+
+/* Firefox */
+* {
+    scrollbar-color: #444444 #1e1e1e;
+    scrollbar-width: thin;
+}
+
+.positive {
+    color: var(--color-green) !important; /* Green for positive values */
+}
+
+.negative {
+    color: var(--color-red) !important; /* Red for negative values */
+}
+.text-green {
+    color: var(--color-green) !important;
+}
+
+.text-yellow {
+    color: var(--color-yellow) !important;
+}
+
+.text-red {
+    color: var(--color-red) !important;
+}
+
+
+.table-empty-message { text-align: center !important; color: #888888; font-style: italic; padding: 20px; }
+
+

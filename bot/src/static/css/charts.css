@@ -1,0 +1,356 @@
+
+
+canvas {
+    margin-top: 0px;
+    max-width: 100%;
+    max-height: 200px;
+}
+.chart-section canvas {
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+}
+.chart-container {
+    border: 1px solid #565656;
+    border-radius: 8px;
+    background-color: #2a2a2a;
+    margin: 0px 0;
+    padding-left: 10px;
+    padding-bottom: 0px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    display: block;
+}
+.chart-and-controls {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 0px;
+    margin-right: 5px;
+    margin-top : 5px;
+    align-items: flex-start;
+}
+.chart-section {
+    flex: 1;
+    min-width: 0;
+}
+
+.chart-controls-right [id^="chart-symbol-"] {
+    padding: 0px;
+    color: #828282; /* Gray color to indicate placeholder */
+    font-size: 14px;
+    font-weight: bold;
+    width: 100%;
+    margin: 2px;
+    display: flex;
+    align-items: center;
+    padding-top: 1px;
+    padding-bottom: 1px;
+}
+
+
+.symbol-placeholder {
+    transition: background-color 0.3s ease;
+    color: #b2b1b1 !important;
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+    width: 90% !important;
+    border-radius: 6px;
+}
+.status-symbol.group-active {
+    background-color: #535028;  /* dark yellow */
+}
+.status-symbol.trade-active {
+    color: var(--color-green) !important;  /* green text */
+}
+.status-symbol.group-paused {
+    background-color: #5c0000;  /* dark yellow */
+}
+
+/* .chart-controls-right {
+    flex: 0 0 200px;
+    width: 204px;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    background-color: #2a2a2a;
+    padding: 5px;
+    border-radius: 8px;
+    border: .5px solid #515151 !important;
+    margin-bottom: 5px;
+} */
+
+.chart-controls-right {
+    /* flex: 0 0 200px; */
+    width: 230px;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    background-color: #2a2a2a;
+    padding: 5px;
+    border-radius: 8px;
+    border: .5px solid #515151 !important;
+    margin-bottom: 5px;
+}
+.chart-controls-right .quantity-control {
+    display: flex;
+    flex-direction: column;
+    gap: 0px;
+    margin-bottom: 5px;
+}
+.chart-controls-right .quantity-group {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: 100%;
+}
+.chart-controls-right .price-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    width: 100%;
+}
+.chart-controls-right .quantity-controls,
+.chart-controls-right .volume-controls,
+.chart-controls-right .trigger-controls,
+.chart-controls-right .buy-controls,
+.chart-controls-right .trade-controls,
+.chart-controls-right .group-controls {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    width: 100%;
+}
+.chart-controls-right .checkbox-row {
+    display: flex;
+    gap: 0px;
+    width: 100%;
+    margin-bottom: 5px;
+    justify-content: space-evenly;
+}
+.chart-controls-right .checkbox-row .trade-controls,
+.chart-controls-right .checkbox-row .trigger-controls,
+.chart-controls-right .checkbox-row .group-controls {
+    display: flex;
+    align-items: center;
+    gap: 2px; /* Minimal gap between checkbox and label */
+    flex: 1;
+    justify-content: flex-start;
+}
+.chart-controls-right .checkbox-row .trade-order-label,
+.chart-controls-right .checkbox-row .trigger-order-label,
+.chart-controls-right .checkbox-row .group-order-label {
+    min-width: 20px !important;
+    font-weight: bold;
+    color: #a6a6a6;
+    font-size: 9px; /* Even smaller font */
+    white-space: nowrap;
+    margin: 0; /* Remove any margin */
+    padding: 2px; /* Remove any padding */
+}
+/* Keep the checkboxes the same size */
+.chart-controls-right .checkbox-row [id*="-order"]{
+    width: 12px !important;
+    height: 12px !important;
+    cursor: pointer !important;
+    accent-color: var(--color-green) !important;
+    margin: 0; /* Remove any margin */
+    flex-shrink: 0;
+}
+#trigger-order,
+#trade-order,
+#group-order {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: var(--color-green); /* Green accent color for checked state */
+}
+/* Hover effect for the label */
+label[for*="trigger-order"]:hover .trigger-order-label,
+label[for*="trade-order"]:hover .trade-order-label,
+label[for*="group-order"]:hover .group-order-label {
+    color: var(--color-green);
+}
+/* Focus effect for accessibility */
+#trigger-order:focus,
+#trade-order:focus,
+#group-order:focus {
+    outline: 2px solid var(--color-green);
+    outline-offset: 2px;
+}
+.chart-controls-right .trigger-controls .trigger-order-label,
+.chart-controls-right .trade-controls .trade-order-label,
+.chart-controls-right .group-controls .group-order-label {
+    min-width: 100px;
+    font-weight: bold;
+    color: #a6a6a6;
+    font-size: 12px;
+    display: inline-block;
+}
+.chart-controls-right .trigger-controls label:hover .trigger-order-label,
+.chart-controls-right .trade-controls label:hover .trade-order-label,
+.chart-controls-right .group-controls label:hover .group-order-label {
+    color: var(--color-green);
+}
+
+.quantity-control {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.quantity-control label {
+    font-weight: bold;
+    color: #ffffff;
+    margin-bottom: 0; /* Remove bottom margin since we're using flexbox */
+    min-width: 80px; /* Ensure consistent label width */
+}
+
+.quantity-control input {
+    padding: 8px;
+    border: 1px solid #565656;
+    border-radius: 3px;
+    background-color: #1e1e1e;
+    color: #ffffff;
+    font-size: 14px;
+    width: 100px; /* Fixed width for quantity input */
+    box-sizing: border-box;
+}
+
+.quantity-control input:focus {
+    border-color: var(--color-green);
+    outline: none;
+}
+.chart-controls-right .quantity-controls label,
+.chart-controls-right .volume-controls label {
+    min-width: 100px;
+    font-size: 12px;
+    color: #a6a6a6;
+}
+
+.chart-controls-right .price-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 0px;
+    margin-bottom: 15px;
+}
+
+.chart-controls-right .buy-controls,
+.chart-controls-right .buy-offset-controls,
+.chart-controls-right .sell-controls,
+.chart-controls-right .sell-offset-controls {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    width: 100%;
+}
+.chart-controls-right .buy-controls label,
+.chart-controls-right .buy-offset-controls label {
+    min-width: 100px;
+    font-size: 14px;
+    font-weight: bold;
+    color: #3d6b1f; /* Green for buy labels */
+}
+.chart-controls-right .sell-controls label,
+.chart-controls-right .sell-offset-controls label {
+    min-width: 100px;
+    font-size: 14px;
+    font-weight: bold;
+    color: #a8303f; /* Red for sell labels */
+}
+.chart-controls-right .buy-controls input,
+.chart-controls-right .buy-offset-controls input,
+.chart-controls-right .sell-controls input,
+.chart-controls-right .sell-offset-controls input {
+    flex: 1;
+    height: 30px;
+    padding-left: 5px;
+    border: 1px solid #565656;
+    border-radius: 3px;
+    background-color: #1e1e1e;
+    color: #ffffff;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+.chart-controls-right .buy-group,
+.chart-controls-right .sell-group {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: 100%;
+}
+.chart-controls-right .trade-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-top: 10px;
+}
+.chart-controls-right .buy-btn,
+.chart-controls-right .sell-btn {
+    width: 100%;
+    padding: 10px;
+    border: none;
+    border-radius: 5px;
+    font-weight: bold;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    min-height: 45px;
+}
+.chart-controls-right .buy-btn {
+    background-color: #2d5016;
+    color: white;
+    border: 3px solid #5c5a5a;
+}
+
+.chart-controls-right .buy-btn:hover {
+    background-color: #45a049;
+}
+
+.chart-controls-right .sell-btn {
+    background-color: #8b2635;
+    color: white;
+    border: 3px solid #5c5a5a;
+}
+
+.chart-controls-right .sell-btn:hover {
+    background-color: #da190b;
+}
+
+.chart-controls-right input[type="number"] {
+    height: 20px;
+    width: 100px;
+}
+
+/* Status styling */
+.status-up,
+.status-bullish,
+.status-rising {
+    color: var(--color-green) !important; /* Green */
+    font-weight: bold;
+}
+
+.status-down,
+.status-bearish,
+.status-falling {
+    color: var(--color-red) !important; /* Red */
+    font-weight: bold;
+}
+
+.status-neutral,
+.status-stable {
+    color: var(--color-yellow) !important; /* Yellow */
+    font-weight: bold;
+}
+
+.highlight-name {
+    font-size: 16px;
+    font-weight: bold;
+    color: #acacac;
+    padding: 2px 2px;
+}
+.highlight-value {
+    font-size: 16px;
+    font-weight: normal;
+    color: #828282; 
+}
+

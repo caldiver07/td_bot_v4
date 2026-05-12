@@ -1,0 +1,94 @@
+
+/* setting section */
+.settings-section {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-top: 5px;
+    margin-bottom: 5px;
+    margin-left: 5px;
+    padding: 8px;
+    border: 1px solid #565656;
+    background-color: #262626;
+    border-radius: 5px;
+}
+.settings-title {
+    color: #b9b9b9;
+    font-weight: bold;
+}
+.settings-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #565656;
+}
+.auto-trading-label {
+    flex-grow: 1;
+    font-weight: bold;
+    color: #888888;
+    font-size: 14px;
+}
+.auto-trading-status {
+    font-weight: bold;
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 3px;
+    transition: all 0.3s ease;
+    display: inline-block;
+    text-align: center;
+}
+.auto-trading-status.on {
+    background-color: #2d5016;
+    border: 1px solid #585858;
+    width: 50px;
+    border-radius: 5px; /* Rounded corners */
+    color: white;
+}
+.auto-trading-status.off {
+    background-color: #501d16;
+    border: 1px solid #585858;
+    width: 50px;
+    border-radius: 5px; /* Rounded corners */
+    color: white;
+}
+.settings-row {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    margin-top: 4px;
+    justify-content: flex-start;  /* Add this line to left-justify */
+}
+.settings-control {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.settings-control input {
+    /* width: 80px; */
+    padding: 4px 6px;
+    font-size: 0.9em;
+}
+.settings-control label {
+    font-weight: bold;
+    color: #888888;
+    font-size: 14px;
+    white-space: nowrap;
+}
+.settings-control input[type="number"] {
+    height: 25px;
+    padding: 0 2px;
+    border: 1px solid #565656;
+    border-radius: 3px;
+    background-color: #1e1e1e;
+    color: #888888;
+    font-size: 14px;
+    box-sizing: border-box;
+    width: 65px;
+}
+.settings-control input[type="number"]:focus {
+    border-color: var(--color-green);
+    outline: none;
+}
+

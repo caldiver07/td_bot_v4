@@ -1,0 +1,67 @@
+
+.symbols-section {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    margin-bottom: 5px;
+    padding-top: 7px;
+    padding-left: 5px;
+    border: 1px solid #565656;
+    background-color: #262626;
+    border-radius: 8px;
+}
+
+.stream-form-container {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 20px; /* Space between buttons and data stream */
+}
+.stream-select-controls {
+    display: flex;
+    flex-direction: row;
+    /* width: 900px; */
+    gap: 1px;
+    margin-bottom: 0px;
+}
+.stream-select-controls label {
+    white-space: nowrap; /* Prevent label text from wrapping */
+
+    color: #ffffff;
+    font-size: 12px;
+    padding: 0px;
+    margin-right: 5px;
+    flex-shrink: 0; /* Prevent the label from shrinking */
+    display: flex;
+    text-align: center;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 8px;
+}
+.stream-select-controls input[type="text"] {
+    height: 30px;
+    width: 100px;
+    font-size: 12px;
+    margin-bottom: 6px;
+    color: #888888;
+}
+#symbol-select-1, #symbol-select-2, #symbol-select-3, #symbol-select-4, #symbol-select-5,
+#symbol-select-6, #symbol-select-7, #symbol-select-8, #symbol-select-9, #symbol-select-10,
+#symbol-select-11, #symbol-select-12, #symbol-select-13, #symbol-select-14, #symbol-select-15,
+#symbol-select-16, #symbol-select-17, #symbol-select-18, #symbol-select-19, #symbol-select-20,
+#symbol-select-21, #symbol-select-22, #symbol-select-23, #symbol-select-24, #symbol-select-25,
+#symbol-select-26, #symbol-select-27, #symbol-select-28, #symbol-select-29, #symbol-select-30,
+#symbol-select-31, #symbol-select-32, #symbol-select-33, #symbol-select-34, #symbol-select-35,
+#symbol-select-36, #symbol-select-37, #symbol-select-38, #symbol-select-39, #symbol-select-40 {
+    width: 150px;
+    height: 30px;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 0px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 8px;
+    color: #888888;
+}
+
