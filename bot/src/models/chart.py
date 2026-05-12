@@ -97,34 +97,12 @@ class Chart:
         self.pause_orders = True
         self.paused_reason = ""
         
-        if self.algo_type:
+        if "flat" in self.algo_type:
             self.pause_orders = False
             self.paused_reason = ""
-        
-        ### TEMP LOGIC UNTIL ALGO TYPE IS IMPLEMENTED
-        if self.algo_type == "s_rev":
+        elif self.algo_type:
             self.pause_orders = True
-            self.paused_reason = "s_rev algo"
-        if "momentum_" in self.algo_type:
-            self.pause_orders = True
-            self.paused_reason = "momentum algo"
-        if "shadow_" in self.algo_type:
-            self.pause_orders = True
-            self.paused_reason = "shadow algo"
-
-        # ### Calculate pause_orders abs(self.level_2_obi) < 0.10 and
-        # if self.spoofing_detected == "no" and self.smart_direction in ("no_trade","flat") and data.get('pause_orders', False) == False and self.time_to_clear > 10.0 and self.time_to_clear < 61.0:
-        #     self.pause_orders = False
-        #     self.paused_reason = ""
-        #     self.algo_type = "flat"
-        # elif self.vwap_distance_cents >= 5.0 and self.time_to_clear > 5.0 and self.liq_consump_rate < 10.0 and self.level_2_obi < -0.15:
-        #     self.pause_orders = True #### TEMP INTIL ALGO TYPE IS IMPLEMENTED
-        #     self.paused_reason = ""
-        #     self.algo_type = "s_rev"
-        # else:
-        #     self.pause_orders = True
-        #     self.paused_reason = "volatility"
-        #     self.algo_type = ""
+            self.paused_reason = "no algo type set"
 
 
     def to_dict(self):

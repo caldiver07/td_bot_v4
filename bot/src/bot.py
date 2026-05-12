@@ -13,6 +13,8 @@ if TYPE_CHECKING:
     from src import Event
 
 class Bot:
+    _threads_started = False
+    
     def __init__(self, schwab_client: 'Client', events: 'Event'):
         self.schwab_client = schwab_client
         self.events = events
@@ -42,6 +44,74 @@ class Bot:
         self._reject_alarm_thread = None
         self.market_exit = False
 
+        self.cached_positions_data = {}
+        self.cached_orders_data = []
+        self.last_rtn_data = {
+            "orders": {},
+            "stream": [],
+            "positions": [],
+            "account": [],
+            "stats": {
+                "phase": "Ready",
+                "status": "Ready",
+                "sub_status": "Ready",
+                "message": ""
+            }
+        }
+        
+        self._network_stop_event = threading.Event()
+        
+        if not any(t.name == "NetworkFetcher" for t in threading.enumerate()):
+            self._network_thread = threading.Thread(
+                target=self._run_network_fetcher,
+                daemon=True,
+                name="NetworkFetcher"
+            )
+            self._network_thread.start()
+
+        if not any(t.name == "AutomationLoop" for t in threading.enumerate()):
+            self._automation_thread = threading.Thread(
+                target=self._run_automation_loop,
+                daemon=True,
+                name="AutomationLoop"
+            )
+            self._automation_thread.start()
+
+    def _run_automation_loop(self):
+        # We need charts to be initialized before polling indefinitely
+        while not self._network_stop_event.is_set():
+            try:
+                if self.schwab_client.charts_initialized:
+                    self.last_rtn_data = self.check_automation()
+            except Exception as e:
+                print(f"Automation loop error: {e}")
+            
+            time.sleep(0.5)
+
+    def _run_network_fetcher(self):
+        while not self._network_stop_event.is_set():
+            try:
+                account_hash = self.schwab_client.check_account_hash()
+                if not account_hash:
+                    time.sleep(1)
+                    continue
+
+                positions_data = self.schwab_client.account_positions(fields="positions")
+                orders_data = self.schwab_client.account_orders(
+                    accountHash=account_hash, 
+                    maxResults=self.search_limit, 
+                    range_minutes=self.search_range_minutes, 
+                    status=None
+                )
+
+                self.cached_positions_data = positions_data if positions_data else {}
+                self.cached_orders_data = orders_data if orders_data else []
+                
+            except Exception as e:
+                print(f"Network fetcher error: {e}")
+                
+            time.sleep(1)
+
     def check_automation(self):
 
         from src import bot_logs
@@ -57,14 +127,12 @@ class Bot:
         # Perform network IO bound operations concurrently
         account_hash = self.schwab_client.check_account_hash()
         
-        with ThreadPoolExecutor(max_workers=3) as executor:
-            future_positions = executor.submit(self.schwab_client.account_positions, fields="positions")
-            future_orders = executor.submit(self.schwab_client.account_orders, accountHash=account_hash, maxResults=self.search_limit, range_minutes=self.search_range_minutes, status=None)
-            future_charts = executor.submit(self.schwab_client.stream.set_chart_data)
-
-            positions_data = future_positions.result()
-            orders_data = future_orders.result()
-            future_charts.result()
+        # Use background thread cache for network IO
+        positions_data = self.cached_positions_data
+        orders_data = self.cached_orders_data
+        
+        # Fast memory lookup
+        self.schwab_client.stream.set_chart_data()
 
         if positions_data and positions_data.get('positions'):
             self.position_status = 'open'

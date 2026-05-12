@@ -59,7 +59,7 @@ class Client:
         self.closing_order_multiplier = 2.0   # multiplier for closing orders
         self.group_order_multiplier = 1.5     # multiplier for group orders
 
-        self.paused_charts_threshold = 40        # threshold for paused charts
+        self.paused_charts_threshold = 50        # threshold for paused charts
         self.stuck_timeout_mult = 10              # multiplier for stuck timeout
         self.order_api_count_limit = 3700
         self.is_short = False
@@ -81,7 +81,9 @@ class Client:
                     self.logger.error(f"Error refreshing token: {e}")
                     time.sleep(30)
 
-        threading.Thread(target=checker, daemon=True, name="TokenChecker").start()
+        # Check if TokenChecker is already running
+        if not any(t.name == "TokenChecker" for t in threading.enumerate()):
+            threading.Thread(target=checker, daemon=True, name="TokenChecker").start()
 
         self.logger.info("Client Initialization Complete")
 

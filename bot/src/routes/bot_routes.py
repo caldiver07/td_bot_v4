@@ -111,7 +111,7 @@ def account_positions():
 
 @bot.route('/bot', methods=['GET'])
 def bot_route():
-    data = trading_bot.check_automation()
+    data = trading_bot.last_rtn_data
     return Response(
         json.dumps(data, sort_keys=False, cls=DateTimeEncoder),
         mimetype='application/json'
