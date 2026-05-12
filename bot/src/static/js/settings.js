@@ -23,12 +23,12 @@ export function setAutoTrading(state) {
 /*order timeout*/
 export function saveOrderTimeout() {
     const orderTimeoutInput = document.getElementById('order-timeout');
-    localStorage.setItem('order_timeout', orderTimeoutInput.value);
+    localStorage.setItem('v4_order_timeout', orderTimeoutInput.value);
     ui.updateSettings();
 }
 export function restoreOrderTimeout(){
     const orderTimeoutInput = document.getElementById('order-timeout');
-    const orderTimeoutState = localStorage.getItem('order_timeout');
+    const orderTimeoutState = localStorage.getItem('v4_order_timeout');
     if (orderTimeoutState !== null) {
         orderTimeoutInput.value = orderTimeoutState;
     }
@@ -38,12 +38,12 @@ export function restoreOrderTimeout(){
 /*opening fill threshold*/
 export function saveOpeningFillThreshold() {
     const openingFillThresholdInput = document.getElementById('opening-fill-threshold');
-    localStorage.setItem('opening-fill-threshold', openingFillThresholdInput.value);
+    localStorage.setItem('v4_opening-fill-threshold', openingFillThresholdInput.value);
     ui.updateSettings();
 }
 export function restoreOpeningFillThreshold(){
     const openingFillThresholdInput = document.getElementById('opening-fill-threshold');
-    const openingFillThresholdState = localStorage.getItem('opening-fill-threshold');
+    const openingFillThresholdState = localStorage.getItem('v4_opening-fill-threshold');
     if (openingFillThresholdState !== null) {
         openingFillThresholdInput.value = openingFillThresholdState;
     }
@@ -52,12 +52,12 @@ export function restoreOpeningFillThreshold(){
 /*closing fill threshold*/
 export function saveClosingFillThreshold() {
     const closingFillThresholdInput = document.getElementById('closing-fill-threshold');
-    localStorage.setItem('closing-fill-threshold', closingFillThresholdInput.value);
+    localStorage.setItem('v4_closing-fill-threshold', closingFillThresholdInput.value);
     ui.updateSettings();
 }
 export function restoreClosingFillThreshold(){
     const closingFillThresholdInput = document.getElementById('closing-fill-threshold');
-    const closingFillThresholdState = localStorage.getItem('closing-fill-threshold');
+    const closingFillThresholdState = localStorage.getItem('v4_closing-fill-threshold');
     if (closingFillThresholdState !== null) {
         closingFillThresholdInput.value = closingFillThresholdState;
     }
@@ -66,12 +66,12 @@ export function restoreClosingFillThreshold(){
 /*opening order threshold*/
 export function saveOpeningOrderThreshold() {
     const openingOrderThresholdInput = document.getElementById('opening-order-threshold');
-    localStorage.setItem('opening-order-threshold', openingOrderThresholdInput.value);
+    localStorage.setItem('v4_opening-order-threshold', openingOrderThresholdInput.value);
     ui.updateSettings();
 }
 export function restoreOpeningOrderThreshold(){
     const openingOrderThresholdInput = document.getElementById('opening-order-threshold');
-    const openingOrderThresholdState = localStorage.getItem('opening-order-threshold');
+    const openingOrderThresholdState = localStorage.getItem('v4_opening-order-threshold');
     if (openingOrderThresholdState !== null) {
         openingOrderThresholdInput.value = openingOrderThresholdState;
     }
@@ -80,12 +80,12 @@ export function restoreOpeningOrderThreshold(){
 /*paused charts timeout*/
 export function savePausedChartsTimeout() {
     const pausedChartsTimeoutInput = document.getElementById('paused-charts-timeout');
-    localStorage.setItem('paused-charts-timeout', pausedChartsTimeoutInput.value);
+    localStorage.setItem('v4_paused-charts-timeout', pausedChartsTimeoutInput.value);
     ui.updateSettings();
 }
 export function restorePausedChartsTimeout(){
     const pausedChartsTimeoutInput = document.getElementById('paused-charts-timeout');
-    const pausedChartsTimeoutState = localStorage.getItem('paused-charts-timeout');
+    const pausedChartsTimeoutState = localStorage.getItem('v4_paused-charts-timeout');
     if (pausedChartsTimeoutState !== null) {
         pausedChartsTimeoutInput.value = pausedChartsTimeoutState;
     }
@@ -94,12 +94,12 @@ export function restorePausedChartsTimeout(){
 /*stuck-timeout-mult */
 export function saveStuckTimeoutMult() {
     const stuckTimeoutMultInput = document.getElementById('stuck-timeout-mult');
-    localStorage.setItem('stuck-timeout-mult', stuckTimeoutMultInput.value);
+    localStorage.setItem('v4_stuck-timeout-mult', stuckTimeoutMultInput.value);
     ui.updateSettings();
 }
 export function restoreStuckTimeoutMult(){
     const stuckTimeoutMultInput = document.getElementById('stuck-timeout-mult');
-    const stuckTimeoutMultState = localStorage.getItem('stuck-timeout-mult');
+    const stuckTimeoutMultState = localStorage.getItem('v4_stuck-timeout-mult');
     if (stuckTimeoutMultState !== null) {
         stuckTimeoutMultInput.value = stuckTimeoutMultState;
     }
@@ -108,12 +108,12 @@ export function restoreStuckTimeoutMult(){
 /*Group order bultiplier*/
 export function saveGroupOrderMultiplier() {
     const groupOrderMultiplierInput = document.getElementById('group-order-multiplier');
-    localStorage.setItem('group-order-multiplier', groupOrderMultiplierInput.value);
+    localStorage.setItem('v4_group-order-multiplier', groupOrderMultiplierInput.value);
     ui.updateSettings();
 }
 export function restoreGroupOrderMultiplier(){
     const groupOrderMultiplierInput = document.getElementById('group-order-multiplier');
-    const groupOrderMultiplierState = localStorage.getItem('group-order-multiplier');
+    const groupOrderMultiplierState = localStorage.getItem('v4_group-order-multiplier');
     if (groupOrderMultiplierState !== null) {
         groupOrderMultiplierInput.value = groupOrderMultiplierState;
     }
@@ -122,12 +122,12 @@ export function restoreGroupOrderMultiplier(){
 /*Closing Order Multiplier*/
 export function saveClosingOrderMultiplier() {
     const closingOrderMultiplierInput = document.getElementById('closing-order-multiplier');
-    localStorage.setItem('closing-order-multiplier', closingOrderMultiplierInput.value);
+    localStorage.setItem('v4_closing-order-multiplier', closingOrderMultiplierInput.value);
     ui.updateSettings();
 }
 export function restoreClosingOrderMultiplier(){
     const closingOrderMultiplierInput = document.getElementById('closing-order-multiplier');
-    const closingOrderMultiplierState = localStorage.getItem('closing-order-multiplier');
+    const closingOrderMultiplierState = localStorage.getItem('v4_closing-order-multiplier');
     if (closingOrderMultiplierState !== null) {
         closingOrderMultiplierInput.value = closingOrderMultiplierState;
     }
@@ -136,12 +136,12 @@ export function restoreClosingOrderMultiplier(){
 /*closing timeout*/
 export function saveClosingTimeout() {
     const closingTimeoutInput = document.getElementById('closing-timeout');
-    localStorage.setItem('closing-timeout', closingTimeoutInput.value);
+    localStorage.setItem('v4_closing-timeout', closingTimeoutInput.value);
     ui.updateSettings();
 }
 export function restoreClosingTimeout(){
     const closingTimeoutInput = document.getElementById('closing-timeout');
-    const closingTimeoutState = localStorage.getItem('closing-timeout');
+    const closingTimeoutState = localStorage.getItem('v4_closing-timeout');
     if (closingTimeoutState !== null) {
         closingTimeoutInput.value = closingTimeoutState;
     }

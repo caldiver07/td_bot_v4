@@ -246,7 +246,7 @@ export function setBidAskInfo(chart_number, data) {
 ///// Manage Trigger settings.....
 export function restoreTriggerOrderState() {
     for (let i = 1; i <= main.numberOfCharts; i++) {
-        const localStorageKey = `triggerOrder_${i}`;
+        const localStorageKey = `v4_triggerOrder_${i}`;
         const triggerOrderState = localStorage.getItem(localStorageKey)  === 'true';
         const triggerOrderCheckbox = document.getElementById(`trigger-order-${i}`);
         const chartSymbol = document.getElementById(`chart-symbol-${i}`);
@@ -261,7 +261,7 @@ export function restoreTriggerOrderState() {
     }
 }
 export function toggleTriggerOrder(symbol) {
-    const localStorageKey = `triggerOrder_${symbol}`;
+    const localStorageKey = `v4_triggerOrder_${symbol}`;
     const triggerOrderCheckbox = document.getElementById(`trigger-order-${symbol}`);
     const chartSymbol = document.getElementById(`status-symbol-${symbol}`);
     if (triggerOrderCheckbox) {
@@ -277,13 +277,13 @@ export function toggleTriggerOrder(symbol) {
     ui.updateChartSettings();
 }
 export function getTriggerSetting(symbol) {
-    const localStorageKey = `triggerOrder_${symbol}`;
+    const localStorageKey = `v4_triggerOrder_${symbol}`;
     return localStorage.getItem(localStorageKey) === 'true';
 }
 
 /// Manage Group settings.....
 export function toggleGroupOrder(chartIndex) {
-    const localStorageKey = `groupOrder_${chartIndex}`;
+    const localStorageKey = `v4_groupOrder_${chartIndex}`;
     const groupOrderCheckbox = document.getElementById(`group-order-${chartIndex}`);
     const chartSymbol = document.getElementById(`chart-symbol-${chartIndex}`);
     const statusSymbol = document.getElementById(`status-symbol-${chartIndex}`);
@@ -304,7 +304,7 @@ export function toggleGroupOrder(chartIndex) {
 }
 export function restoreGroupOrderState() {
     for (let i = 1; i <= main.numberOfCharts; i++) {
-        const localStorageKey = `groupOrder_${i}`;
+        const localStorageKey = `v4_groupOrder_${i}`;
         const groupOrderState = localStorage.getItem(localStorageKey)  === 'true';
         const groupOrderCheckbox = document.getElementById(`group-order-${i}`);
         const chartSymbol = document.getElementById(`chart-symbol-${i}`);
@@ -322,7 +322,7 @@ export function restoreGroupOrderState() {
     }
 }
 export function getGroupSetting(chartIndex) {
-    const localStorageKey = `groupOrder_${chartIndex}`;
+    const localStorageKey = `v4_groupOrder_${chartIndex}`;
     return localStorage.getItem(localStorageKey) === 'true';
 }
 

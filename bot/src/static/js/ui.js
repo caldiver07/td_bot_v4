@@ -30,7 +30,7 @@ export function updateSettings() {
         closing_order_multiplier: parseFloat(closingOrderMultiplierInput.value),
         closing_timeout: parseInt(closingTimeoutInput.value, 10),
         group_order_multiplier: parseFloat(groupOrderMultiplierInput.value),
-        account_number: localStorage.getItem('selectedAccount')
+        account_number: localStorage.getItem('v4_selectedAccount')
     };
 
     fetch('/update-settings/', {

@@ -219,7 +219,7 @@ function generateEmptyStatusTable() {
 
 export function getSelectedSymbolFromStatus(symbol) {
     const statusSymbol = document.getElementById(`status-symbol-${symbol}`);
-    const localStoreageStatusSymbole = localStorage.getItem(`chart_symbol_${symbol}`);
+    const localStoreageStatusSymbole = localStorage.getItem(`v4_chart_symbol_${symbol}`);
     if (localStoreageStatusSymbole) {
         return localStoreageStatusSymbole;
     }
@@ -258,7 +258,7 @@ export function restoreTradeOrderState() {
     }
 }
 export function toggleTradeOrder(symbol) {
-    const localStorageKey = `tradeOrder_${symbol}`;
+    const localStorageKey = `v4_tradeOrder_${symbol}`;
     const tradeOrderCheckbox = document.getElementById(`trade-order-${symbol}`);
     const chartSymbol = document.getElementById(`chart-symbol-${symbol}`);
     const statusSymbol = document.getElementById(`status-symbol-${symbol}`);
@@ -279,7 +279,7 @@ export function toggleTradeOrder(symbol) {
     ui.updateChartSettings(symbol);
 }
 export function getTradeSetting(symbol) {
-    const localStorageKey = `tradeOrder_${symbol}`;
+    const localStorageKey = `v4_tradeOrder_${symbol}`;
     return localStorage.getItem(localStorageKey) === 'true';
 }
 

@@ -43,10 +43,10 @@ export function updateAccountInfo(data) {
         });
         
         // Get saved account from localStorage or use first account
-        let selectedAccountId = localStorage.getItem('selectedAccount');
+        let selectedAccountId = localStorage.getItem('v4_selectedAccount');
         if (!selectedAccountId && data.length > 0) {
             selectedAccountId = data[0].account_id;
-            localStorage.setItem('selectedAccount', selectedAccountId);
+            localStorage.setItem('v4_selectedAccount', selectedAccountId);
         }
         
         // Set the selected account in dropdown
@@ -62,7 +62,7 @@ export function updateAccountInfo(data) {
         accountSelect.addEventListener('change', (e) => {
             const newAccountId = e.target.value;
             if (newAccountId) {
-                localStorage.setItem('selectedAccount', newAccountId);
+                localStorage.setItem('v4_selectedAccount', newAccountId);
                 const account = data.find(acc => acc.account_id === newAccountId);
                 if (account) {
                     displayAccountData(account);
