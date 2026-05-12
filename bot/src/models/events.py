@@ -51,7 +51,7 @@ class Event:
             self.index_event(doc, event_date)
             
     def index_event(self, doc: dict, event_date: datetime) -> dict | None:
-        index_name = event_date.strftime("events_v3.%Y.%m.%d")
+        index_name = event_date.strftime("events_v4.%Y.%m.%d")
         es_client = None
         try:
             if Elasticsearch is None:
@@ -73,7 +73,7 @@ class Event:
         
     def refresh_counters_from_es(self,
                              es_client: Optional[Elasticsearch] = None,
-                             index_pattern: str = 'events_v3.*',
+                             index_pattern: str = 'events_v4.*',
                              start_dt: Optional[datetime] = None,
                              end_dt: Optional[datetime] = None) -> dict:
         """

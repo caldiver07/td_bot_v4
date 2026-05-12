@@ -129,7 +129,7 @@ def flush_redis():
 @bot.route('/reset-stats/<symbol>', methods=['POST'])
 def reset_stats(symbol):
     try:
-        schwab_client.redis_client.delete(f"stats_v3:{symbol}")
+        schwab_client.redis_client.delete(f"stats_v4:{symbol}")
         if hasattr(schwab_client, 'stream') and hasattr(schwab_client.stream, 'chart_list'):
             for chart in schwab_client.stream.chart_list:
                 if chart.symbol == symbol:

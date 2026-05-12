@@ -199,7 +199,7 @@ class Stats:
         #     self.reset_stats()
 
     def load_dict(self):
-        data = self.redis_client.get(f"stats_v3:{self.symbol}")
+        data = self.redis_client.get(f"stats_v4:{self.symbol}")
         if data:
             data = json.loads(data)
         else:
@@ -279,5 +279,5 @@ class Stats:
             'age': self.age,
             'paused': self.paused,
         }
-        redis_write = self.redis_client.set(name=f"stats_v3:{self.symbol}", value=json.dumps(rtn), ex=43200)
+        redis_write = self.redis_client.set(name=f"stats_v4:{self.symbol}", value=json.dumps(rtn), ex=43200)
         return rtn

@@ -15,7 +15,7 @@ class BotLog:
 
         normalized_record = dict(record)
         normalized_record['event_id'] = normalized_record.get('event_id') or str(uuid4())
-        normalized_record['event_type'] = normalized_record.get('event_type') or 'bot_v3'
+        normalized_record['event_type'] = normalized_record.get('event_type') or 'bot_v4'
         normalized_record['event_date'] = normalized_record.get('event_date') or datetime.utcnow().isoformat()
 
         return normalized_record
@@ -35,7 +35,7 @@ class BotLog:
         event_date = datetime.utcnow().isoformat()
         shared_fields = {
             'event_date': event_date,
-            'event_type': 'bot_v3',
+            'event_type': 'bot_v4',
             'bot_phase': bot_stats.get('phase'),
             'bot_status': bot_stats.get('status'),
             'bot_sub_status': bot_stats.get('sub_status'),
@@ -78,7 +78,7 @@ class BotLog:
         payload: dict or list of dict records to index
         es_client: optional Elasticsearch client. If not provided, one will be created
                     using the ELASTICSEARCH_URL environment variable (default: http://elasticsearch:9200).
-        index_format: strftime-style format for the index name (default 'bot_v3.%Y.%m.%d')
+        index_format: strftime-style format for the index name (default 'bot_v4.%Y.%m.%d')
 
         Returns:
         The response dict returned by Elasticsearch `bulk` API.
@@ -96,7 +96,7 @@ class BotLog:
         for record in records:
             doc = self.to_dict(record)
             event_date = datetime.fromisoformat(doc['event_date'])
-            index_name = event_date.strftime('bot_v3.%Y.%m.%d')
+            index_name = event_date.strftime('bot_v4.%Y.%m.%d')
             operations.append({'index': {'_index': index_name}})
             operations.append(doc)
 

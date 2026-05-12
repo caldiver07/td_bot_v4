@@ -13,8 +13,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of the application's code into the container
 COPY . .
 
-# Make port 5030 available to the world outside this container
-EXPOSE 5030
+# Make port 5031 available to the world outside this container
+EXPOSE 5031
 
 # Define environment variables
 ENV FLASK_APP=run.py
@@ -24,4 +24,4 @@ ENV FLASK_RUN_HOST=0.0.0.0
 # or run it manually before starting the container.
 
 # Run Gunicorn with multiple workers
-CMD ["gunicorn", "--bind", "0.0.0.0:5030", "--workers", "1", "--threads", "4", "--timeout", "120", "bot.app:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:5031", "--workers", "1", "--threads", "4", "--timeout", "120", "bot.app:app"]
