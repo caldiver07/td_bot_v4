@@ -329,6 +329,12 @@ class Bot:
                         if not is_nested_child and str(ord.entered_time) < str(chart.order_opening.entered_time):
                             continue # Skip to next chart slot for evaluation, do not map this old order
                             
+                    # Prevent old canceled/rejected trigger children from ghosting into a newly placed decoupled closing order
+                    if not exact_closing_match:
+                        if getattr(chart.order_closing, 'entered_time', None) and getattr(ord, 'entered_time', None):
+                            if str(ord.entered_time) < str(chart.order_closing.entered_time):
+                                continue
+
                     # Second condition fix: evaluate ord.parent_order_id as strings with safety
                     parent_matches_active_trade = (str(ord.parent_order_id) == str(chart.order_opening.order_id)) if ord.parent_order_id and chart.order_opening.order_id else False
                     
@@ -651,7 +657,6 @@ class Bot:
         session = utils.get_trading_session()
 
         order = {
-            "specialInstruction": "ALL_OR_NONE",
             "orderType": orderType,
             "session": session,
             "duration": "DAY",
@@ -690,7 +695,6 @@ class Bot:
         # cancel_time_close = self._get_cancel_time(self.schwab_client.order_timeout * self.schwab_client.closing_order_multiplier)
         
         order = {
-            "specialInstruction": "ALL_OR_NONE",
             "orderType": "LIMIT",
             "session": session,
             "duration": duration,
@@ -859,7 +863,6 @@ class Bot:
             order_payload['orderType'] = 'MARKET'
             if 'price' in order_payload:
                 del order_payload['price']
-                del order_payload['specialInstruction']  # Remove ALL_OR_NONE for MARKET orders
             self.market_exit = True
             print(f"DEBUG: Escaping to MARKET order for {chart.symbol} after {chart.exit_position_count} failed exits.")
             
@@ -874,7 +877,6 @@ class Bot:
         cancel_time = self._get_cancel_time(self.schwab_client.closing_timeout)
 
         order = {
-            "specialInstruction": "ALL_OR_NONE",
             "orderType": "LIMIT",
             "session": session,
             "duration": duration,
