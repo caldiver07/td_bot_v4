@@ -146,17 +146,61 @@ class Bot:
         # Process orders concurrently for all independent symbols
         self.place_opening_order()
 
+        cancellations = self._cancellations(account_hash)
+
+        # Perform cancellations concurrently
+        if cancellations:
+            self._place_cancel_orders(cancellations)
+            
+        ### Place closing orders for any straggling positions....
+        self.place_closing_order()
+
+        rtn_data = self._response_data(orders, positions_data)
+
+        ## LOG DATA TO ELASTICSEARCH
+        bot_logs.add_event(rtn_data)
+
+        ## RETURN DATA FOR FRONTEND
+        return rtn_data
+    
+    def _place_cancel_orders(self, cancellations):
+        with ThreadPoolExecutor(max_workers=min(len(cancellations), 5)) as executor:
+            futures = {executor.submit(self.schwab_client.order_cancel, acc, ord_id): ord_id for acc, ord_id in cancellations}
+            for future in as_completed(futures):
+                ord_id = futures[future]
+                failed = False
+                try:
+                    res_data = future.result()
+                    # client.order_cancel returns a dict with 'status': 'ok' or 'error'
+                    if res_data.get('status') != 'ok':
+                        failed = True
+                        print(f"DEBUG: Cancellation rejected for {ord_id}: {res_data.get('message', 'No message')}")
+                except Exception as e:
+                    failed = True
+                    print(f"DEBUG: Cancellation exception {e} for {ord_id}")
+                    
+                if failed:
+                    # If cancellation failed to network/limit, allow retry next loop!
+                    for cht in self.schwab_client.stream.chart_list:
+                        if getattr(cht.order_opening, 'order_id') == ord_id:
+                            cht.order_opening.cancel_sent = False
+                            cht.order_opening.bot_status = 'Shift' if getattr(cht.order_opening, 'price_shift', False) else 'Timeout'
+                        elif getattr(cht.order_closing, 'order_id') == ord_id:
+                            cht.order_closing.cancel_sent = False
+                            cht.order_closing.bot_status = 'Shift' if getattr(cht.order_closing, 'price_shift', False) else 'Timeout'
+
+    def _cancellations(self, account_hash):
         cancellations = []
 
         ### Cancel Timeout Opening Orders per chart....
         for cht in self.schwab_client.stream.chart_list:
             if cht.order_opening.bot_status == 'Countdown':
                 try:
-                    if cht.order_opening.side == 'BUY' and float(cht.bid) > (float(cht.order_opening.price) + .01):
+                    if cht.order_opening.side == 'BUY' and float(cht.bid) > float(cht.order_opening.price):
                         cht.order_opening.price_shift = True
                         cht.order_opening.bot_status = 'Shift'
                         print(f"DEBUG: Opening Shift Cancel for {cht.symbol} (Bid: {cht.bid} > Price: {cht.order_opening.price})")
-                    elif cht.order_opening.side in ['SELL', 'SELL_SHORT'] and float(cht.ask) < (float(cht.order_opening.price) - .01):
+                    elif cht.order_opening.side in ['SELL', 'SELL_SHORT'] and float(cht.ask) < float(cht.order_opening.price):
                         cht.order_opening.price_shift = True
                         cht.order_opening.bot_status = 'Shift'
                         print(f"DEBUG: Opening Shift Cancel for {cht.symbol} (Ask: {cht.ask} < Price: {cht.order_opening.price})")
@@ -190,35 +234,10 @@ class Bot:
                     cht.order_closing.bot_status = 'Canceling'  # Prevent double-counting on next loop
                     cancellations.append((account_hash, cht.order_closing.order_id))
 
-        # Perform cancellations concurrently
-        if cancellations:
-            with ThreadPoolExecutor(max_workers=min(len(cancellations), 5)) as executor:
-                futures = {executor.submit(self.schwab_client.order_cancel, acc, ord_id): ord_id for acc, ord_id in cancellations}
-                for future in as_completed(futures):
-                    ord_id = futures[future]
-                    failed = False
-                    try:
-                        res_data = future.result()
-                        # client.order_cancel returns a dict with 'status': 'ok' or 'error'
-                        if res_data.get('status') != 'ok':
-                            failed = True
-                            print(f"DEBUG: Cancellation rejected for {ord_id}: {res_data.get('message', 'No message')}")
-                    except Exception as e:
-                        failed = True
-                        print(f"DEBUG: Cancellation exception {e} for {ord_id}")
-                        
-                    if failed:
-                        # If cancellation failed to network/limit, allow retry next loop!
-                        for cht in self.schwab_client.stream.chart_list:
-                            if getattr(cht.order_opening, 'order_id') == ord_id:
-                                cht.order_opening.cancel_sent = False
-                                cht.order_opening.bot_status = 'Shift' if getattr(cht.order_opening, 'price_shift', False) else 'Timeout'
-                            elif getattr(cht.order_closing, 'order_id') == ord_id:
-                                cht.order_closing.cancel_sent = False
-                                cht.order_closing.bot_status = 'Shift' if getattr(cht.order_closing, 'price_shift', False) else 'Timeout'
+        return cancellations
 
-        ### Place closing orders for any straggling positions....
-        self.place_closing_order()
+    def _response_data(self, orders, positions_data):
+        rtn_data = {}
 
         ## SET RESPONSE DATA
         rtn_data["orders"] = orders
@@ -231,11 +250,6 @@ class Bot:
             "sub_status": self.sub_status,
             "message": self.message
         }
-
-        ## LOG DATA TO ELASTICSEARCH
-        bot_logs.add_event(rtn_data)
-
-        ## RETURN DATA FOR FRONTEND
         return rtn_data
 
     def _update_orders(self, orders_data):
@@ -323,48 +337,58 @@ class Bot:
                             chart.order_opening.update_stats()
 
                 elif ord.position_effect == 'CLOSING':
-                    # Prevent ghosting: time-fence ignores closing orders belonging to previous scalps
-                    if getattr(chart.order_opening, 'entered_time', None) and getattr(ord, 'entered_time', None):
-                        is_nested_child = (str(ord.parent_order_id) == str(chart.order_opening.order_id))
-                        if not is_nested_child and str(ord.entered_time) < str(chart.order_opening.entered_time):
-                            continue # Skip to next chart slot for evaluation, do not map this old order
+                    # First check for an exact match to our tracked active closing order ID
+                    if exact_closing_match:
+                        # Prevent Schwab's nested stale statuses from overwriting the real active status
+                        stale_backtrack = chart.order_closing.status in ['WORKING', 'FILLED', 'CANCELED'] and ord.status in ['AWAITING_PARENT_ORDER', 'QUEUED', 'PENDING_ACTIVATION']
+                        if not stale_backtrack:
+                            chart.order_closing.update_order(ord)
+                        chart.update_order_closing_flag = True
+                        
+                        # Fix: If exact match is REJECTED, wipe it from the slot so the bot can keep falling backwards 
+                        # to find the REAL working older order it lost track of.
+                        if chart.order_closing.status == 'REJECTED':
+                            chart.order_closing.order_id = ""
+                            chart.order_closing.entered_time = None
+                            chart.update_order_closing_flag = False
                             
-                    # Prevent old canceled/rejected trigger children from ghosting into a newly placed decoupled closing order
-                    if not exact_closing_match:
-                        if getattr(chart.order_closing, 'entered_time', None) and getattr(ord, 'entered_time', None):
-                            if str(ord.entered_time) < str(chart.order_closing.entered_time):
-                                continue
-
-                    # Second condition fix: evaluate ord.parent_order_id as strings with safety
-                    parent_matches_active_trade = (str(ord.parent_order_id) == str(chart.order_opening.order_id)) if ord.parent_order_id and chart.order_opening.order_id else False
-                    
-                    if exact_closing_match or (chart.update_order_closing_flag == False and (parent_matches_active_trade or not chart.order_closing.order_id)):
-                        if exact_closing_match:
-                            # Prevent Schwab's nested stale statuses from overwriting the real active status
-                            stale_backtrack = chart.order_closing.status in ['WORKING', 'FILLED', 'CANCELED'] and ord.status in ['AWAITING_PARENT_ORDER', 'QUEUED', 'PENDING_ACTIVATION']
-                            if not stale_backtrack:
-                                chart.order_closing.update_order(ord)
-                            chart.update_order_closing_flag = True
-                        elif ord.status == 'REJECTED':
                             if not self.reject_order_id or self.reject_order_id != ord.order_id:
                                 self.reject_count +=1
                                 self.reject_order_id = ord.order_id
-                        else:
-                            # Safely inherit tracking flags before re-assigning so we don't duplicate stat counts
-                            ord.order_placed = chart.order_closing.order_placed
-                            ord.order_placed_logged = chart.order_closing.order_placed_logged
-                            ord.order_filled = chart.order_closing.order_filled
-                            ord.order_filled_logged = chart.order_closing.order_filled_logged
-                            ord.order_canceled = chart.order_closing.order_canceled
-                            ord.order_canceled_logged = chart.order_closing.order_canceled_logged
-                            chart.order_closing = ord
-                            chart.update_order_closing_flag = True
-
+                                
                         if chart.update_order_closing_flag:
                             chart.order_closing.update_bot_status()
                             chart.order_closing.update_stats()
-                            break # Successfully mapped
+                        break # Successfully mapped exactly what we were tracking
+
+                    # If we don't have an exact ID match, ONLY map this order to our active tracker IF:
+                    # 1. We are perfectly matched via the parent/child linkage of the current active trade.
+                    # 2. AND we haven't already mapped a better active order this cycle.
+                    parent_matches_active_trade = (str(ord.parent_order_id) == str(chart.order_opening.order_id)) if ord.parent_order_id and chart.order_opening.order_id else False
+                    
+                    if not chart.update_order_closing_flag and (parent_matches_active_trade or not chart.order_closing.order_id):
+                        # CRITICAL FIX for the "ghosting" rejection loops:
+                        # If our bot just placed a fresh closing order (bot_status == 'Waiting') but hasn't received 
+                        # the specific order_id yet from the thread pool, we absolutely CANNOT allow an old CANCELED/REJECTED 
+                        # order from earlier to blindly map into this empty slot and pretend to be the newest order!
+                        if chart.order_closing.bot_status == 'Waiting' and ord.status in ['CANCELED', 'REJECTED']:
+                            continue # Ignore ALL dead orders when we are explicitly waiting for a fresh live one
                             
+                        # Safely inherit tracking flags before re-assigning so we don't duplicate stat counts
+                        ord.order_placed = chart.order_closing.order_placed
+                        ord.order_placed_logged = chart.order_closing.order_placed_logged
+                        ord.order_filled = chart.order_closing.order_filled
+                        ord.order_filled_logged = chart.order_closing.order_filled_logged
+                        ord.order_canceled = chart.order_closing.order_canceled
+                        ord.order_canceled_logged = chart.order_closing.order_canceled_logged
+                        
+                        chart.order_closing = ord
+                        chart.update_order_closing_flag = True
+                        
+                        chart.order_closing.update_bot_status()
+                        chart.order_closing.update_stats()
+                        break # Successfully fuzzy mapped
+                        
                     elif chart.update_order_closing_flag == True:
                         # Prioritize active working closing orders and FILLED orders over newer spam rejected/canceled ones
                         # ONLY if it belongs to the same parent order, or if it's the actual parent of the active trade
@@ -474,7 +498,6 @@ class Bot:
         account_hash = self.schwab_client.check_account_hash()
 
         #### Print Out Details...
-        self._stop_reject_alarm()
         self.reject_count = 0
         self.reject_order_id = None
 
@@ -919,9 +942,12 @@ class Bot:
 
         #### Check Closing Orders....
         for cht in self.schwab_client.stream.chart_list:
+            api_lag_position = cht.order_opening.status == 'FILLED' and getattr(cht.order_closing, 'status', None) not in ['WORKING', 'AWAITING_PARENT_ORDER', 'QUEUED', 'FILLED']
+            has_position = True if cht.position or api_lag_position else False
+            
             # SANITY CHECK: If chart holds no position, and the opening order is completely dead/done, 
             # there is mathematically zero reason for the closing order to be Waiting. Reset it.
-            if not cht.position and cht.order_opening.bot_status in ['Ready', 'Canceled', 'Rejected', 'Unknown']:
+            if not has_position and cht.order_opening.bot_status in ['Ready', 'Canceled', 'Rejected', 'Unknown']:
                 if cht.order_closing.bot_status == 'Waiting':
                     # Allow 5 additional seconds to ensure the API wasn't catching up
                     import time
@@ -1045,31 +1071,3 @@ class Bot:
         for rank, chart in enumerate(ranked_charts, start=1):
             chart.rank = rank
 
-    def _start_reject_alarm(self):
-        if self._reject_alarm_thread and self._reject_alarm_thread.is_alive():
-            return
-
-        self._reject_alarm_stop_event.clear()
-        self._reject_alarm_thread = threading.Thread(
-            target=self._run_reject_alarm,
-            daemon=True,
-            name="RejectAlarm",
-        )
-        self._reject_alarm_thread.start()
-
-    def _stop_reject_alarm(self):
-        self._reject_alarm_stop_event.set()
-
-    def _run_reject_alarm(self):
-        try:
-            import winsound
-            while not self._reject_alarm_stop_event.is_set():
-                winsound.Beep(2500, 700)
-                if self._reject_alarm_stop_event.is_set():
-                    break
-                winsound.Beep(2000, 700)
-                time.sleep(0.05)
-        except Exception:
-            while not self._reject_alarm_stop_event.is_set():
-                print("\a", end="", flush=True)
-                time.sleep(0.5)
