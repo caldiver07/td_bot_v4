@@ -2,9 +2,9 @@
 from datetime import datetime, timedelta
 
 class Order:
-    def __init__(self, order_id, symbol, qty, side="", type="", time_in_force="", status="", filled_qty=0, price=0, strategy_type="", parent_order_id="", parent_status="", entered_time=None, close_time=None, position_effect=None, order_timeout=6000, stuck_timeout_mult=4):
+    def __init__(self, order_id, symbol, qty, side="", type="", time_in_force="", status="", filled_qty=0, price=0, strategy_type="", parent_order_id="", parent_status="", entered_time=None, close_time=None, position_effect=None, order_timeout=6000, stuck_timeout_mult=4, algo_type=None):
         self.order_id = order_id
-        self.algo_type = None
+        self.algo_type = algo_type
         self.position_effect = position_effect
         self.strategy_type = strategy_type
         self.parent_order_id = parent_order_id 

@@ -40,7 +40,7 @@ class Chart:
         self.stats = Stats(redis_client=redis_client)
 
         self.trade_order = False
-        self.quantity = 20
+        self.quantity = 10
         
         self.pause_orders = False
         self.paused_reason = "" ## opening / closing / volatility
@@ -60,6 +60,7 @@ class Chart:
         self.spread_volatility = 0
         self.trend = "NA"
         self.vwap_distance_cents = 0.0
+        self.avg_vwap_extension = 0.0
         
         self.last_opening_order_time = 0
         self.last_closing_order_time = 0
@@ -91,13 +92,16 @@ class Chart:
         self.level_2_volume = data.get('level_2_volume', self.level_2_volume)
         self.time_to_clear = data.get('time_to_clear') or 0.0
         self.vwap_distance_cents = data.get('vwap_distance_cents') or self.vwap_distance_cents
-        
+        self.avg_vwap_extension = data.get('avg_vwap_extension') or self.avg_vwap_extension
         self.algo_type = data.get('algo_type') or ""
 
         self.pause_orders = True
         self.paused_reason = ""
         
         if "flat" in self.algo_type:
+            self.pause_orders = False
+            self.paused_reason = ""
+        elif "vwap" in self.algo_type:
             self.pause_orders = False
             self.paused_reason = ""
         elif self.algo_type:

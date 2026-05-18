@@ -1,5 +1,6 @@
 import threading
 import time
+import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from datetime import datetime, timedelta
@@ -7,6 +8,7 @@ from typing import TYPE_CHECKING
 import pytz
 from .common import utils
 from .models.order import Orders, Order
+
 
 if TYPE_CHECKING:
     from .client import Client
@@ -60,8 +62,9 @@ class Bot:
         }
         
         self._network_stop_event = threading.Event()
+        self.pull_network_from_redis = True
         
-        if not any(t.name == "NetworkFetcher" for t in threading.enumerate()):
+        if self.pull_network_from_redis == False and not any(t.name == "NetworkFetcher" for t in threading.enumerate()):
             self._network_thread = threading.Thread(
                 target=self._run_network_fetcher,
                 daemon=True,
@@ -80,11 +83,9 @@ class Bot:
     def _run_automation_loop(self):
         # We need charts to be initialized before polling indefinitely
         while not self._network_stop_event.is_set():
-            try:
-                if self.schwab_client.charts_initialized:
-                    self.last_rtn_data = self.check_automation()
-            except Exception as e:
-                print(f"Automation loop error: {e}")
+
+            if self.schwab_client.charts_initialized:
+                self.last_rtn_data = self.check_automation()
             
             time.sleep(0.5)
 
@@ -128,9 +129,16 @@ class Bot:
         account_hash = self.schwab_client.check_account_hash()
         
         # Use background thread cache for network IO
-        positions_data = self.cached_positions_data
-        orders_data = self.cached_orders_data
-        
+        if self.pull_network_from_redis == True and self.schwab_client.redis_client:
+            positions_data = self.schwab_client.redis_client.get(f"account_positions:{account_hash}") or {}
+            orders_data = self.schwab_client.redis_client.get(f"account_orders:{account_hash}") or []
+            if orders_data: orders_data = json.loads(orders_data)
+            if positions_data: positions_data = json.loads(positions_data)
+        else:
+            positions_data = self.cached_positions_data
+            orders_data = self.cached_orders_data
+
+
         # Fast memory lookup
         self.schwab_client.stream.set_chart_data()
 
@@ -194,6 +202,8 @@ class Bot:
 
         ### Cancel Timeout Opening Orders per chart....
         for cht in self.schwab_client.stream.chart_list:
+            if (getattr(cht, 'algo_type', None) and 'vwap' in cht.algo_type.lower()) or cht.trade_order == False:
+                continue
             if cht.order_opening.bot_status == 'Countdown':
                 try:
                     if cht.order_opening.side == 'BUY' and float(cht.bid) > float(cht.order_opening.price):
@@ -215,6 +225,8 @@ class Bot:
 
         #### Cancel Timout Closing Orders per chart....
         for cht in self.schwab_client.stream.chart_list:
+            if (getattr(cht, 'algo_type', None) and 'vwap' in cht.algo_type.lower()) or cht.trade_order == False:
+                continue
             if cht.order_closing.bot_status == 'Countdown':
                 try:
                     if cht.order_closing.side in ['BUY', 'BUY_TO_COVER'] and float(cht.bid) > float(cht.order_closing.price):
@@ -410,20 +422,49 @@ class Bot:
 
     def _fill_order_obj(self, order_data: dict, parent_order_id="", parent_status="") -> Order:
         
-        if order_data['orderLegCollection'][0]['instruction'] in ['BUY', 'SELL_SHORT']:
+        orderStrategyType = order_data.get("orderStrategyType", "")
+        childOrderStrategies = order_data.get("childOrderStrategies", [])
+        orderLegCollection = order_data.get("orderLegCollection", [])
+        childOrderFirst = childOrderStrategies[0] if len(childOrderStrategies) > 0 else {}
+        childOrderFirstOderStrategyType = childOrderFirst.get("orderStrategyType", "")
+
+        if hasattr(order_data, 'orderLegCollection') and order_data['orderLegCollection'][0]['instruction'] in ['BUY', 'SELL_SHORT']:
             order_timeout = self.schwab_client.order_timeout
         else:
             order_timeout = self.schwab_client.closing_timeout
+        
+        if orderStrategyType and "oco" in orderStrategyType.lower():
+            limitOrder = childOrderStrategies[1] if len(childOrderStrategies) > 1 else {}
+            orderLegCollection = limitOrder.get("orderLegCollection", [])
+            position_effect = orderLegCollection[0]['positionEffect']
+            symbol = orderLegCollection[0]['instrument']['symbol']
+            instruction = orderLegCollection[0]['instruction']
+        elif orderStrategyType and "limit" in orderStrategyType.lower():
+            position_effect = orderLegCollection[0]['positionEffect']
+            symbol = orderLegCollection[0]['instrument']['symbol']
+            instruction = orderLegCollection[0]['instruction']
+        elif orderStrategyType and "single" in orderStrategyType.lower():
+            position_effect = orderLegCollection[0]['positionEffect']
+            symbol = orderLegCollection[0]['instrument']['symbol']
+            instruction = orderLegCollection[0]['instruction']
+        elif orderStrategyType and "trigger" in orderStrategyType.lower():
+            position_effect = orderLegCollection[0]['positionEffect']
+            symbol = orderLegCollection[0]['instrument']['symbol']
+            instruction = orderLegCollection[0]['instruction']
+        else:
+            position_effect = orderLegCollection[0]['positionEffect']
+            symbol = orderLegCollection[0]['instrument']['symbol']
+            instruction = orderLegCollection[0]['instruction']
 
         order = Order(
             order_id=order_data.get("orderId"),
-            position_effect=order_data['orderLegCollection'][0]['positionEffect'],
+            position_effect=position_effect,
             strategy_type=order_data.get("orderStrategyType",""),
             parent_order_id=parent_order_id,
             parent_status=parent_status,
-            symbol=order_data['orderLegCollection'][0]['instrument']['symbol'],
+            symbol=symbol,
             qty=order_data.get("quantity"), 
-            side=order_data['orderLegCollection'][0]['instruction'],
+            side=instruction,
             type=order_data.get("orderType"),
             time_in_force=order_data.get("timeInForce"),
             status=order_data.get("status"),
@@ -562,6 +603,10 @@ class Bot:
                         print(f"DEBUG: Max active flat algo orders reached. Skipping new order for {chart.symbol}")
                         continue  # Skip placing new flat orders if we've reached the max active limit
                     instruction = 'SELL_SHORT'
+                elif chart.algo_type == 'vwap_long':
+                    instruction = 'BUY'
+                elif chart.algo_type == 'vwap_short':
+                    instruction = 'SELL_SHORT'
                 else:
                     instruction = 'BUY'
 
@@ -569,14 +614,14 @@ class Bot:
                 if order_payload:
                     trade_orders.append((chart, order_payload))
                     time_stamp = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S+0000')
-                    chart.order_opening = Order("", chart.symbol, 0, entered_time=time_stamp, order_timeout=self.schwab_client.order_timeout, stuck_timeout_mult=self.schwab_client.stuck_timeout_mult)
+                    chart.order_opening = Order("", chart.symbol, 0, entered_time=time_stamp, order_timeout=self.schwab_client.order_timeout, stuck_timeout_mult=self.schwab_client.stuck_timeout_mult, algo_type=chart.algo_type)
                     chart.order_opening.bot_status = 'Waiting' # Instantly prevent spamming next loop
                     chart.last_opening_order_time = time.time()
                     
                     # If this is a TRIGGER order, lock the closing order mechanism immediately 
                     # so we don't accidentally fire a duplicate closing sibling if the API is slow to update.
-                    if order_payload.get("orderStrategyType") == "TRIGGER":
-                        chart.order_closing = Order("", chart.symbol, 0, entered_time=time_stamp, order_timeout=self.schwab_client.closing_timeout, stuck_timeout_mult=self.schwab_client.stuck_timeout_mult)
+                    if order_payload.get("orderStrategyType") in ["TRIGGER", "TRIGGER_OCO"]:
+                        chart.order_closing = Order("", chart.symbol, 0, entered_time=time_stamp, order_timeout=self.schwab_client.closing_timeout, stuck_timeout_mult=self.schwab_client.stuck_timeout_mult, algo_type=chart.algo_type)
                         chart.order_closing.bot_status = 'Waiting'
                         chart.last_closing_order_time = time.time()
                         
@@ -595,12 +640,12 @@ class Bot:
                     if order_payload:
                         trade_orders.append((chart, order_payload))
                         time_stamp = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S+0000')
-                        chart.order_opening = Order("", chart.symbol, 0, entered_time=time_stamp, order_timeout=self.schwab_client.order_timeout, stuck_timeout_mult=self.schwab_client.stuck_timeout_mult)
+                        chart.order_opening = Order("", chart.symbol, 0, entered_time=time_stamp, order_timeout=self.schwab_client.order_timeout, stuck_timeout_mult=self.schwab_client.stuck_timeout_mult, algo_type=chart.algo_type)
                         chart.order_opening.bot_status = 'Waiting' # Instantly prevent spamming next loop
                         chart.last_opening_order_time = time.time()
                         
-                        if order_payload.get("orderStrategyType") == "TRIGGER":
-                            chart.order_closing = Order("", chart.symbol, 0, entered_time=time_stamp, order_timeout=self.schwab_client.closing_timeout, stuck_timeout_mult=self.schwab_client.stuck_timeout_mult)
+                        if order_payload.get("orderStrategyType") in ["TRIGGER", "TRIGGER_OCO"]:
+                            chart.order_closing = Order("", chart.symbol, 0, entered_time=time_stamp, order_timeout=self.schwab_client.closing_timeout, stuck_timeout_mult=self.schwab_client.stuck_timeout_mult, algo_type=chart.algo_type)
                             chart.order_closing.bot_status = 'Waiting'
                             chart.last_closing_order_time = time.time()
                             
@@ -657,14 +702,24 @@ class Bot:
                 self.events.add_event(event_type="price_adjustment", symbol=chart.symbol)
 
         if trigger_order and instruction in ['BUY', 'SELL_SHORT']:
-            order_payload = self.limit_order_trigger_payload(
-                symbol=chart.symbol,
-                quantity=chart.quantity,
-                instruction=instruction,
-                price=price,
-                child_price=child_price,
-                chart=chart
-            )
+            if chart.algo_type and 'vwap' in chart.algo_type:
+                order_payload = self.limit_order_trigger_oco_payload(
+                    symbol=chart.symbol,
+                    quantity=chart.quantity,
+                    instruction=instruction,
+                    price=price,
+                    child_price=child_price,
+                    chart=chart
+                )
+            else:
+                order_payload = self.limit_order_trigger_payload(
+                    symbol=chart.symbol,
+                    quantity=chart.quantity,
+                    instruction=instruction,
+                    price=price,
+                    child_price=child_price,
+                    chart=chart
+                )
         else:
             order_payload = self.order_payload(
                 symbol=chart.symbol,
@@ -698,6 +753,116 @@ class Bot:
         }
         return order
     
+    def limit_order_trigger_oco_payload(self, price, child_price, quantity, symbol, instruction="BUY", duration="DAY", chart=None):
+        session = utils.get_trading_session()
+        if instruction == 'BUY':
+            child_instruction = 'SELL'
+        elif instruction == 'SELL_SHORT':
+            child_instruction = 'BUY_TO_COVER'
+        elif instruction == 'SELL':
+            child_instruction = 'BUY'
+
+        trailing_stop_offset = 0.10
+        
+        if chart and getattr(chart, 'avg_vwap_extension', None):
+            vwap_ext = (chart.avg_vwap_extension or 0) * 0.01 ## Convert integer based cents to decimal dollars
+            offset_dollars = abs(vwap_ext) * 0.25
+            trailing_stop_offset = max(0.01, round(offset_dollars, 2))
+            
+            if getattr(chart, 'algo_type', '') and 'vwap' in chart.algo_type.lower():
+                if instruction == 'BUY':
+                    child_price = round(price + (vwap_ext) * 0.5, 2)
+                elif instruction == 'SELL_SHORT':
+                    child_price = round(price - (vwap_ext) * 0.5, 2)
+                    
+        child_limit_quantity = max(1, int(quantity / 2))
+        remainder_quantity = quantity - child_limit_quantity
+
+        child_strategies = [
+            {
+                "orderStrategyType": "OCO",
+                "childOrderStrategies": [
+                    {
+                        "orderType": "LIMIT",
+                        "session": session,
+                        "price": child_price,
+                        "duration": duration,
+                        "orderStrategyType": "SINGLE",
+                        "orderLegCollection": [
+                            {
+                                "instruction": child_instruction,
+                                "quantity": child_limit_quantity,
+                                "instrument": {
+                                    "symbol": symbol,
+                                    "assetType": "EQUITY"
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "orderType": "TRAILING_STOP",
+                        "session": "NORMAL", # Stops generally only work in normal hours
+                        "stopPriceLinkBasis": "MARK",
+                        "stopPriceLinkType": "VALUE",
+                        "stopPriceOffset": trailing_stop_offset,
+                        "duration": duration,
+                        "orderStrategyType": "SINGLE",
+                        "orderLegCollection": [
+                            {
+                                "instruction": child_instruction,
+                                "quantity": child_limit_quantity,
+                                "instrument": {
+                                    "symbol": symbol,
+                                    "assetType": "EQUITY"
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+
+        if remainder_quantity > 0:
+            child_strategies.append({
+                "orderType": "TRAILING_STOP",
+                "session": "NORMAL",
+                "stopPriceLinkBasis": "MARK",
+                "stopPriceLinkType": "VALUE",
+                "stopPriceOffset": trailing_stop_offset,
+                "duration": duration,
+                "orderStrategyType": "SINGLE",
+                "orderLegCollection": [
+                    {
+                        "instruction": child_instruction,
+                        "quantity": remainder_quantity,
+                        "instrument": {
+                            "symbol": symbol,
+                            "assetType": "EQUITY"
+                        }
+                    }
+                ]
+            })
+
+        order = {
+            "orderType": "LIMIT",
+            "session": session,
+            "duration": duration,
+            "price": price,
+            "orderStrategyType": "TRIGGER",
+            "orderLegCollection": [
+                {
+                    "instruction": instruction,
+                    "quantity": quantity,
+                    "instrument": {
+                        "symbol": symbol,
+                        "assetType": "EQUITY"
+                    }
+                }
+            ],
+            "childOrderStrategies": child_strategies
+        }
+        return order
+
     def limit_order_trigger_payload(self, price, child_price, quantity, symbol, instruction="BUY", duration="DAY", chart=None):  ### Old Duration "DAY, GOOD_TILL_CANCEL"
 
         # Determine session based on current time
