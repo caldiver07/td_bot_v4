@@ -97,19 +97,19 @@
     color: #b1b1b1;
 }
 
-.orders-table tr[data-status="FILLED"] td:nth-child(10) {
+.orders-table tr[data-status="FILLED"] td:nth-child(12) {
     color: var(--color-green); /* Green for filled orders */
 }
 
-.orders-table tr[data-status="PENDING"] td:nth-child(10) {
+.orders-table tr[data-status="PENDING"] td:nth-child(12) {
     color: var(--color-yellow); /* Yellow for pending orders */
 }
 
-.orders-table tr[data-status="CANCELED"] td:nth-child(10) {
+.orders-table tr[data-status="CANCELED"] td:nth-child(12) {
     color: var(--color-red); /* Red for cancelled orders */
 }
 
-.orders-table tr:not([data-status="FILLED"]):not([data-status="PENDING"]):not([data-status="CANCELED"]) td:nth-child(10) {
+.orders-table tr:not([data-status="FILLED"]):not([data-status="PENDING"]):not([data-status="CANCELED"]) td:nth-child(12) {
     color: var(--color-blue); /* Blue for working orders */
 }
 .buy {

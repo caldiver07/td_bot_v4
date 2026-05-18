@@ -87,6 +87,8 @@ export function generateOrdersTable(orders, isWorkingOrders = false) {
                     <td>${order.order_id || 'N/A'}</td>
                     <td>${order.parent_order_id || ''}</td>
                     <td>${order.strategy_type || 'N/A'}</td>
+                    <td>${order.qty || 'N/A'}</td>
+                    <td>${price}</td>
                     <td class="${instruction.toLowerCase()}">${instruction}</td>
                     <td>${order.orderType || order.type || 'N/A'}</td>
                     <td>${status}</td>
@@ -104,6 +106,8 @@ export function generateOrdersTable(orders, isWorkingOrders = false) {
         <th>Order ID</th>
         <th>Parent Order</th>
         <th>Strategy</th>
+        <th>Qty</th>
+        <th>Price</th>
         <th>Side</th>
         <th>Type</th>
         <th>Status</th>`;
@@ -127,17 +131,22 @@ export function generateEmptyOrdersTable() {
             <thead>
                 <tr>
                     <th>Symbol</th>
-                    <th>Quantity</th>
+                    <th>Time</th>
+                    <th>Effect</th>
+                    <th>Time</th>
+                    <th>Order ID</th>
+                    <th>Parent Order</th>
+                    <th>Strategy</th>
+                    <th>Qty</th>
                     <th>Price</th>
                     <th>Side</th>
                     <th>Type</th>
                     <th>Status</th>
-                    <th>Action</th>
                 </tr>
             </thead>
             <tbody>
                 <tr>
-                    <td colspan="8" class="table-empty-message">No working orders found</td>
+                    <td colspan="12" class="table-empty-message">No working orders found</td>
                 </tr>
             </tbody>
         </table>
