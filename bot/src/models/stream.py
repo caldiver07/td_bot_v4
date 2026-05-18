@@ -74,6 +74,9 @@ class Stream():
         self.closing_fill_threshold = 55
         self.opening_order_threshold = 10
 
+        self.algo_vwap_enabled = True
+        self.algo_flat_enabled = True
+
         self.paused_charts_timeout = 5
 
         #### Stat........
@@ -98,6 +101,8 @@ class Stream():
             chart_data = self.redis_client.get(chart.symbol)
             chart_data = json.loads(chart_data) if chart_data else None
             if chart_data:
+                chart.algo_vwap_enabled = self.algo_vwap_enabled
+                chart.algo_flat_enabled = self.algo_flat_enabled
                 chart.load_from_dict(chart_data)
                 self.calculate_chart_change(chart)
                 chart.stats.update_date_durations(chart)

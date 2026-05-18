@@ -20,6 +20,37 @@ export function setAutoTrading(state) {
     toggleAutoTrading();
 }
 
+export function toggleAlgoVwap() {
+    const checkbox = document.getElementById('algo-vwap');
+    localStorage.setItem('v4_algo_vwap_enabled', checkbox.checked);
+    ui.updateSettings();
+}
+
+export function toggleAlgoFlat() {
+    const checkbox = document.getElementById('algo-flat');
+    localStorage.setItem('v4_algo_flat_enabled', checkbox.checked);
+    ui.updateSettings();
+}
+
+export function restoreAlgoSettings() {
+    const vwapCheckbox = document.getElementById('algo-vwap');
+    const flatCheckbox = document.getElementById('algo-flat');
+    
+    if(vwapCheckbox) {
+        let vwapState = localStorage.getItem('v4_algo_vwap_enabled');
+        if (vwapState !== null) {
+            vwapCheckbox.checked = (vwapState === 'true');
+        }
+    }
+    
+    if(flatCheckbox) {
+        let flatState = localStorage.getItem('v4_algo_flat_enabled');
+        if (flatState !== null) {
+            flatCheckbox.checked = (flatState === 'true');
+        }
+    }
+}
+
 /*order timeout*/
 export function saveOrderTimeout() {
     const orderTimeoutInput = document.getElementById('order-timeout');
@@ -157,6 +188,8 @@ export function exportToWindow() {
     window.saveStuckTimeoutMult = saveStuckTimeoutMult;
     window.saveGroupOrderMultiplier = saveGroupOrderMultiplier;
     window.saveClosingOrderMultiplier = saveClosingOrderMultiplier;
+    window.toggleAlgoVwap = toggleAlgoVwap;
+    window.toggleAlgoFlat = toggleAlgoFlat;
     window.saveClosingTimeout = saveClosingTimeout;
 }
 exportToWindow();

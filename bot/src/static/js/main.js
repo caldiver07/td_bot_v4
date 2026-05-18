@@ -202,6 +202,7 @@ window.addEventListener('load', () => {
     settings.restoreClosingTimeout();
 
     settings.restorePausedChartsTimeout();
+    settings.restoreAlgoSettings();
 
     ui.updateSettings();
 });

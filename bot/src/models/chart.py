@@ -40,7 +40,7 @@ class Chart:
         self.stats = Stats(redis_client=redis_client)
 
         self.trade_order = False
-        self.quantity = 10
+        self.quantity = 20
         
         self.pause_orders = False
         self.paused_reason = "" ## opening / closing / volatility
@@ -99,11 +99,19 @@ class Chart:
         self.paused_reason = ""
         
         if "flat" in self.algo_type:
-            self.pause_orders = False
-            self.paused_reason = ""
+            if not getattr(self, 'algo_flat_enabled', True):
+                self.pause_orders = True
+                self.paused_reason = "disabled flat algo "
+            else:
+                self.pause_orders = False
+                self.paused_reason = ""
         elif "vwap" in self.algo_type:
-            self.pause_orders = False
-            self.paused_reason = ""
+            if not getattr(self, 'algo_vwap_enabled', True):
+                self.pause_orders = True
+                self.paused_reason = "disabled vwap algo"
+            else:
+                self.pause_orders = False
+                self.paused_reason = ""
         elif self.algo_type:
             self.pause_orders = True
             self.paused_reason = "no algo type set"

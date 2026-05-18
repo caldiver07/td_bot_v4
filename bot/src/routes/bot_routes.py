@@ -83,6 +83,9 @@ def update_settings():
         schwab_client.stream.closing_fill_threshold = data.get('closing_fill_threshold', schwab_client.stream.closing_fill_threshold)
         schwab_client.stream.opening_order_threshold = data.get('opening_order_threshold', schwab_client.stream.opening_order_threshold)
 
+        schwab_client.stream.algo_vwap_enabled = data.get('algo_vwap_enabled', schwab_client.stream.algo_vwap_enabled)
+        schwab_client.stream.algo_flat_enabled = data.get('algo_flat_enabled', schwab_client.stream.algo_flat_enabled)
+
         schwab_client.stream.paused_charts_timeout = data.get('paused_charts_timeout', schwab_client.stream.paused_charts_timeout)
 
         schwab_client.closing_order_multiplier = data.get('closing_order_multiplier', schwab_client.closing_order_multiplier)

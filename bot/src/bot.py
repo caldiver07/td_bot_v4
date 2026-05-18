@@ -62,7 +62,7 @@ class Bot:
         }
         
         self._network_stop_event = threading.Event()
-        self.pull_network_from_redis = True
+        self.pull_network_from_redis = False
         
         if self.pull_network_from_redis == False and not any(t.name == "NetworkFetcher" for t in threading.enumerate()):
             self._network_thread = threading.Thread(
@@ -202,7 +202,7 @@ class Bot:
 
         ### Cancel Timeout Opening Orders per chart....
         for cht in self.schwab_client.stream.chart_list:
-            if (getattr(cht, 'algo_type', None) and 'vwap' in cht.algo_type.lower()) or cht.trade_order == False:
+            if (getattr(cht.order_opening, 'algo_type', None) and 'vwap' in cht.order_opening.algo_type.lower()) or cht.trade_order == False:
                 continue
             if cht.order_opening.bot_status == 'Countdown':
                 try:
@@ -225,7 +225,7 @@ class Bot:
 
         #### Cancel Timout Closing Orders per chart....
         for cht in self.schwab_client.stream.chart_list:
-            if (getattr(cht, 'algo_type', None) and 'vwap' in cht.algo_type.lower()) or cht.trade_order == False:
+            if (getattr(cht.order_closing, 'algo_type', None) and 'vwap' in cht.order_closing.algo_type.lower()) or cht.trade_order == False:
                 continue
             if cht.order_closing.bot_status == 'Countdown':
                 try:
@@ -331,6 +331,7 @@ class Bot:
                             ord.order_filled_logged = chart.order_opening.order_filled_logged
                             ord.order_canceled = chart.order_opening.order_canceled
                             ord.order_canceled_logged = chart.order_opening.order_canceled_logged
+                            ord.algo_type = getattr(chart.order_opening, 'algo_type', getattr(chart, 'algo_type', None))
                             chart.order_opening = ord
                         chart.order_opening.update_bot_status()
                         chart.order_opening.update_stats()
@@ -344,6 +345,7 @@ class Bot:
                             ord.order_filled_logged = chart.order_opening.order_filled_logged
                             ord.order_canceled = chart.order_opening.order_canceled
                             ord.order_canceled_logged = chart.order_opening.order_canceled_logged
+                            ord.algo_type = getattr(chart.order_opening, 'algo_type', getattr(chart, 'algo_type', None))
                             chart.order_opening = ord
                             chart.order_opening.update_bot_status()
                             chart.order_opening.update_stats()
@@ -393,6 +395,7 @@ class Bot:
                         ord.order_filled_logged = chart.order_closing.order_filled_logged
                         ord.order_canceled = chart.order_closing.order_canceled
                         ord.order_canceled_logged = chart.order_closing.order_canceled_logged
+                        ord.algo_type = getattr(chart.order_closing, 'algo_type', getattr(chart, 'algo_type', None))
                         
                         chart.order_closing = ord
                         chart.update_order_closing_flag = True
@@ -413,6 +416,7 @@ class Bot:
                             ord.order_filled_logged = chart.order_closing.order_filled_logged
                             ord.order_canceled = chart.order_closing.order_canceled
                             ord.order_canceled_logged = chart.order_closing.order_canceled_logged
+                            ord.algo_type = getattr(chart.order_closing, 'algo_type', getattr(chart, 'algo_type', None))
                             chart.order_closing = ord
                             chart.order_closing.update_bot_status()
                             chart.order_closing.update_stats()
@@ -766,7 +770,7 @@ class Bot:
         
         if chart and getattr(chart, 'avg_vwap_extension', None):
             vwap_ext = (chart.avg_vwap_extension or 0) * 0.01 ## Convert integer based cents to decimal dollars
-            offset_dollars = abs(vwap_ext) * 0.25
+            offset_dollars = abs(vwap_ext) * 0.50
             trailing_stop_offset = max(0.01, round(offset_dollars, 2))
             
             if getattr(chart, 'algo_type', '') and 'vwap' in chart.algo_type.lower():
