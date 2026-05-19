@@ -44,6 +44,14 @@ export function generateStatusTable(data) {
             const timeToClear = chart.time_to_clear || '';
             const bid = chart.bid || '';
             const ask = chart.ask || '';
+            
+            const chartDelay = chart.chart_time_delay !== null && chart.chart_time_delay !== undefined ? chart.chart_time_delay.toFixed(1) : '-';
+            const setDelay = chart.set_time_delay !== null && chart.set_time_delay !== undefined ? chart.set_time_delay.toFixed(1) : '-';
+            const delays = `${chartDelay}:${setDelay}`;
+
+            const hasHighDelay = (chart.chart_time_delay > 2) || (chart.set_time_delay > 2);
+            const delayClass = hasHighDelay ? 'text-red' : '';
+            
             let openBotStatus = chart.order_opening?.bot_status || '';
             let closeBotStatus = chart.order_closing?.bot_status || '';
             const pausedOrders = chart.pause_orders || false;
@@ -135,6 +143,7 @@ export function generateStatusTable(data) {
                     <td class="ttc" data-status="${timeToClear > 100 ? 'high' : ''}">${timeToClear}</td>
                     <td class="bid">${bid}</td>
                     <td class="ask" >${ask}</td>
+                    <td class="delays ${delayClass}" >${delays}</td>
                     <td class="trade" ><input type="checkbox" id="trade-order-${symbol}" onchange="toggleTradeOrder('${symbol}')" ${tradeOrder ? 'checked' : ''}></td>
                 </tr>
             `;
@@ -168,6 +177,7 @@ export function generateStatusTable(data) {
                     <th class="ttc">TTC</th>                    
                     <th class="bid">Bid</th>
                     <th class="ask">Ask</th>
+                    <th class="delays">Delays</th>
                     <th class="trade">Trade</th>
                 </tr>
             </thead>
@@ -205,6 +215,7 @@ function generateEmptyStatusTable() {
                     <th class="ttc">TTC</th>                    
                     <th class="bid">Bid</th>
                     <th class="ask">Ask</th>
+                    <th class="delays">Delays</th>
                     <th class="trade">Trade</th>
                 </tr>
             </thead>

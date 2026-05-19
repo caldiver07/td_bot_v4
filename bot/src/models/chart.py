@@ -48,7 +48,7 @@ class Chart:
         self.update_order_opening_flag = False
         self.update_order_closing_flag = False
 
-        self.can_short = True
+        self.can_short = False
 
         self.exit_position_count = 0
 
@@ -65,14 +65,37 @@ class Chart:
         self.last_opening_order_time = 0
         self.last_closing_order_time = 0
 
+        self.chart_time_delay = 0
+        self.set_time_delay = 0
+
     def load_from_dict(self, data):
         def format_price(val):
             try:
                 return f"{float(val):.2f}" if val is not None and val != "" else val
             except (ValueError, TypeError):
                 return val
-
+            
+        def calc_delay(timestamp_str, format:str):
+            try:
+                if format == "epoch":
+                    timestamp = datetime.utcfromtimestamp(float(timestamp_str))
+                    now = datetime.utcnow()
+                else:
+                    timestamp = datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S")
+                    ## Adjust for local tiemzone if needed by comparing to current time
+                    now = datetime.now()
+                
+                delay = (now - timestamp).total_seconds()
+                return delay
+            except (ValueError, TypeError):
+                return None
+            
+        self.set_time = data.get('set_time') or None
+        self.chart_time = data.get('chart_time') or None
         
+        self.chart_time_delay = calc_delay(self.chart_time, "epoch") if self.chart_time else None
+        self.set_time_delay = calc_delay(self.set_time, "epoch") if self.set_time else None
+
         self.stream_id = data.get('stream_id') or "NA"
         bid_val = data.get('bid')
         self.bid = format_price(bid_val) if bid_val is not None else self.bid
@@ -123,6 +146,8 @@ class Chart:
             'stream_id': self.stream_id,
             'symbol': self.symbol,
             'algo_type': self.algo_type,
+            'chart_time_delay': self.chart_time_delay,
+            'set_time_delay': self.set_time_delay,
             'bid': self.bid,
             'bid_size': self.bid_size,
             'ask': self.ask,

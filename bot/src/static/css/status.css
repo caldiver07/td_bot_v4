@@ -105,8 +105,9 @@
 .status-table th.l2-volume, .status-table td.l2-volume { width: 4%; }
 .status-table th.ttc, .status-table td.ttc { width: 3%; }
 .status-table th.bid, .status-table td.bid { width: 4%; }
-.status-table th.ask, .status-table td.ask { width: 4%; }
-.status-table th.trade, .status-table td.trade { width: 5%; text-align: center; }
+.status-table th.ask, .status-table td.ask { width: 3%; }
+.status-table th.delays, .status-table td.delays { width: 5%; font-size: 0.7em; white-space: nowrap; }
+.status-table th.trade, .status-table td.trade { width: 3%; text-align: center; }
 
 .status-table th {
     background-color: #333333;

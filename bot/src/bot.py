@@ -91,25 +91,22 @@ class Bot:
 
     def _run_network_fetcher(self):
         while not self._network_stop_event.is_set():
-            try:
-                account_hash = self.schwab_client.check_account_hash()
-                if not account_hash:
-                    time.sleep(1)
-                    continue
+            
+            account_hash = self.schwab_client.check_account_hash()
+            if not account_hash:
+                time.sleep(1)
+                continue
 
-                positions_data = self.schwab_client.account_positions(fields="positions")
-                orders_data = self.schwab_client.account_orders(
-                    accountHash=account_hash, 
-                    maxResults=self.search_limit, 
-                    range_minutes=self.search_range_minutes, 
-                    status=None
-                )
+            positions_data = self.schwab_client.account_positions(fields="positions")
+            orders_data = self.schwab_client.account_orders(
+                accountHash=account_hash, 
+                maxResults=self.search_limit, 
+                range_minutes=self.search_range_minutes, 
+                status=None
+            )
 
-                self.cached_positions_data = positions_data if positions_data else {}
-                self.cached_orders_data = orders_data if orders_data else []
-                
-            except Exception as e:
-                print(f"Network fetcher error: {e}")
+            self.cached_positions_data = positions_data if positions_data else {}
+            self.cached_orders_data = orders_data if orders_data else []
                 
             time.sleep(1)
 
@@ -381,6 +378,12 @@ class Bot:
                     parent_matches_active_trade = (str(ord.parent_order_id) == str(chart.order_opening.order_id)) if ord.parent_order_id and chart.order_opening.order_id else False
                     
                     if not chart.update_order_closing_flag and (parent_matches_active_trade or not chart.order_closing.order_id):
+                        
+                        # Protect healthy tracking slots from being overwritten by delayed ghost messages 
+                        # during a fuzzy match. Only allow exact ID matches to cancel a working/filled order.
+                        if chart.order_closing.status in ['WORKING', 'FILLED', 'QUEUED', 'AWAITING_PARENT_ORDER', 'PENDING_ACTIVATION'] and ord.status in ['CANCELED', 'REJECTED']:
+                            continue
+                            
                         # CRITICAL FIX for the "ghosting" rejection loops:
                         # If our bot just placed a fresh closing order (bot_status == 'Waiting') but hasn't received 
                         # the specific order_id yet from the thread pool, we absolutely CANNOT allow an old CANCELED/REJECTED 
@@ -426,6 +429,7 @@ class Bot:
 
     def _fill_order_obj(self, order_data: dict, parent_order_id="", parent_status="") -> Order:
         
+        filled_price = 0.0
         orderStrategyType = order_data.get("orderStrategyType", "")
         childOrderStrategies = order_data.get("childOrderStrategies", [])
         orderLegCollection = order_data.get("orderLegCollection", [])
@@ -451,6 +455,13 @@ class Bot:
             position_effect = orderLegCollection[0]['positionEffect']
             symbol = orderLegCollection[0]['instrument']['symbol']
             instruction = orderLegCollection[0]['instruction']
+            if order_data.get("orderType") == "MARKET":
+                orderActivityCollection = order_data.get("orderActivityCollection", []) or []
+                if orderActivityCollection and len(orderActivityCollection) > 0:
+                    executionLegs = orderActivityCollection[0].get("executionLegs", []) or []
+                    if executionLegs and len(executionLegs) > 0:
+                        filled_price = executionLegs[0].get("price", 0.0)
+                
         elif orderStrategyType and "trigger" in orderStrategyType.lower():
             position_effect = orderLegCollection[0]['positionEffect']
             symbol = orderLegCollection[0]['instrument']['symbol']
@@ -460,6 +471,7 @@ class Bot:
             symbol = orderLegCollection[0]['instrument']['symbol']
             instruction = orderLegCollection[0]['instruction']
 
+        price = order_data.get("price") or filled_price or 0.0
         order = Order(
             order_id=order_data.get("orderId"),
             position_effect=position_effect,
@@ -473,7 +485,7 @@ class Bot:
             time_in_force=order_data.get("timeInForce"),
             status=order_data.get("status"),
             filled_qty=order_data.get("filledQuantity"),
-            price=order_data.get("price"),
+            price=price,
             entered_time=order_data.get("enteredTime"),
             close_time=order_data.get("closeTime"),
             order_timeout=order_timeout,
