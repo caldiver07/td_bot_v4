@@ -115,10 +115,28 @@ class Client:
 
         self.events.add_event(event_type=f"account_details", response_time=api_response_time)
         data = account_details.json()
-        # if self.write_to_es:
-        #     events.refresh_counters_from_es()
-        day_change = data[0]['securitiesAccount']['currentBalances']['liquidationValue'] - data[0]['securitiesAccount']['initialBalances']['liquidationValue']
-        acct = Account(account_id=data[0]['securitiesAccount']['accountNumber'], balance=data[0]['securitiesAccount']['currentBalances']['liquidationValue'], buying_power=data[0]['securitiesAccount']['currentBalances']['buyingPower'], currency='USD', day_change=day_change)
+        if not data:
+            return {}
+
+        target_account = None
+        target_hash = self.check_account_hash()
+
+        for account_data in data:
+            if 'securitiesAccount' in account_data:
+                if account_data['securitiesAccount'].get('accountNumber') == target_hash:
+                    target_account = account_data
+                    break
+        
+        if not target_account:
+            if len(data) > 0 and 'securitiesAccount' in data[0]:
+                target_account = data[0]
+            else:
+                return {}
+
+        securitiesAccount = target_account['securitiesAccount']
+        
+        day_change = securitiesAccount['currentBalances']['liquidationValue'] - securitiesAccount['initialBalances']['liquidationValue']
+        acct = Account(account_id=securitiesAccount['accountNumber'], balance=securitiesAccount['currentBalances']['liquidationValue'], buying_power=securitiesAccount['currentBalances']['buyingPower'], currency='USD', day_change=day_change)
         acct_dict = acct.to_dict()
         # events.add_event(event_type="account_info", platform=self.platform, write_to_es=self.write_to_es)
         return acct_dict
@@ -253,20 +271,42 @@ class Client:
         self.events.add_event(event_type=f"account_positions", response_time=api_response_time)
 
         data = account_details.json()
-        if not data or 'securitiesAccount' not in data[0]:
+        if not data:
             return {"positions": {}, "stream": {}, "account": {}}
 
+        target_account = None
+        target_hash = self.check_account_hash()
+
+        for account_data in data:
+            if 'securitiesAccount' in account_data:
+                if account_data['securitiesAccount'].get('accountNumber') == target_hash:
+                    target_account = account_data
+                    break
+        
+        if not target_account:
+            if len(data) > 0 and 'securitiesAccount' in data[0]:
+                target_account = data[0]
+            else:
+                return {"positions": {}, "stream": {}, "account": {}}
+
         ### get account info
-        day_change = data[0]['securitiesAccount']['currentBalances']['liquidationValue'] - data[0]['securitiesAccount']['initialBalances']['liquidationValue']
-        acct = Account(account_id=data[0]['securitiesAccount']['accountNumber'], balance=data[0]['securitiesAccount']['currentBalances']['liquidationValue'], buying_power=data[0]['securitiesAccount']['currentBalances']['buyingPower'], currency='USD', day_change=day_change)
+        securitiesAccount = target_account['securitiesAccount']
+        day_change = securitiesAccount['currentBalances']['liquidationValue'] - securitiesAccount['initialBalances']['liquidationValue']
+        acct = Account(account_id=securitiesAccount['accountNumber'], balance=securitiesAccount['currentBalances']['liquidationValue'], buying_power=securitiesAccount['currentBalances']['buyingPower'], currency='USD', day_change=day_change)
         acct_dict = acct.to_dict()
 
         ##### get positions
-        securitiesAccount = data[0]['securitiesAccount']    
         positions_data = securitiesAccount.get('positions', [])
-        ### clear postions in charts
+        
+        ### clear postions in charts (Except assumed ones which are waiting for API confirmation!)
         for chart in self.stream.chart_list:
-            chart.has_position = False
+            is_assumed = getattr(chart.position, 'assumed', False)
+            closing_filled = getattr(chart.order_closing, 'status', '') == 'FILLED'
+            assumed_timeout = True if (is_assumed and getattr(chart.position, 'position_age', lambda: 0)() > 30000) else False
+            
+            if not is_assumed or closing_filled or assumed_timeout:
+                chart.has_position = False
+                chart.position = None
 
         if positions_data:
             for pos in positions_data:
@@ -303,7 +343,11 @@ class Client:
 
         ### Now clear positions for charts that no longer have a matching position
         for chart in self.stream.chart_list:
-            if chart.has_position == False:
+            is_assumed = getattr(chart.position, 'assumed', False)
+            closing_filled = getattr(chart.order_closing, 'status', '') == 'FILLED'
+            assumed_timeout = True if (is_assumed and getattr(chart.position, 'position_age', lambda: 0)() > 30000) else False
+
+            if chart.has_position == False and (not is_assumed or closing_filled or assumed_timeout):
                 chart.position = None
 
         position_dict = positions.to_dict()
