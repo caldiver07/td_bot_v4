@@ -471,6 +471,13 @@ class Bot:
             symbol = orderLegCollection[0]['instrument']['symbol']
             instruction = orderLegCollection[0]['instruction']
 
+        if order_data.get("orderType") in ["MARKET","TRAILING_STOP"]:
+            orderActivityCollection = order_data.get("orderActivityCollection", []) or []
+            if orderActivityCollection and len(orderActivityCollection) > 0:
+                executionLegs = orderActivityCollection[0].get("executionLegs", []) or []
+                if executionLegs and len(executionLegs) > 0:
+                    filled_price = executionLegs[0].get("price", 0.0)
+                
         price = order_data.get("price") or filled_price or 0.0
         order = Order(
             order_id=order_data.get("orderId"),
