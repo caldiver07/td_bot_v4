@@ -6,6 +6,7 @@ export function updateSettings() {
     const autoTradingCheckbox = document.getElementById('auto-trading');
     const algoVwapCheckbox = document.getElementById('algo-vwap');
     const algoFlatCheckbox = document.getElementById('algo-flat');
+    const algoScalpCheckbox = document.getElementById('algo-scalp');
 
     const orderTimeoutInput = document.getElementById('order-timeout');
     
@@ -22,6 +23,7 @@ export function updateSettings() {
     const settings = {
         auto_trading: autoTradingCheckbox.checked,
         algo_vwap_enabled: algoVwapCheckbox ? algoVwapCheckbox.checked : true,
+        algo_scalp_enabled: algoScalpCheckbox ? algoScalpCheckbox.checked : true,
         algo_flat_enabled: algoFlatCheckbox ? algoFlatCheckbox.checked : true,
         order_timeout: parseInt(orderTimeoutInput.value, 10),
         

@@ -10,6 +10,7 @@ class Position:
         self.change_today = change_today
         self.position_date = datetime.utcnow()
         self.order_cancelled = False
+        self.assumed = False
         
 
     def position_age(self) -> int:
@@ -27,7 +28,8 @@ class Position:
             'change_today': self.change_today,
             'position_date': self.position_date.isoformat(),
             'order_cancelled': self.order_cancelled,
-            'position_age': self.position_age()
+            'position_age': self.position_age(),
+            'assumed': self.assumed
         }
 
 class Positions:

@@ -76,6 +76,7 @@ class Stream():
 
         self.algo_vwap_enabled = True
         self.algo_flat_enabled = True
+        self.algo_scalp_enabled = True
 
         self.paused_charts_timeout = 5
 
@@ -103,6 +104,7 @@ class Stream():
             if chart_data:
                 chart.algo_vwap_enabled = self.algo_vwap_enabled
                 chart.algo_flat_enabled = self.algo_flat_enabled
+                chart.algo_scalp_enabled = self.algo_scalp_enabled
                 chart.load_from_dict(chart_data)
                 self.calculate_chart_change(chart)
                 chart.stats.update_date_durations(chart)

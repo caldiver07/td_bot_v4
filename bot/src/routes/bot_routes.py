@@ -85,6 +85,7 @@ def update_settings():
 
         schwab_client.stream.algo_vwap_enabled = data.get('algo_vwap_enabled', schwab_client.stream.algo_vwap_enabled)
         schwab_client.stream.algo_flat_enabled = data.get('algo_flat_enabled', schwab_client.stream.algo_flat_enabled)
+        schwab_client.stream.algo_scalp_enabled = data.get('algo_scalp_enabled', schwab_client.stream.algo_scalp_enabled)
 
         schwab_client.stream.paused_charts_timeout = data.get('paused_charts_timeout', schwab_client.stream.paused_charts_timeout)
 

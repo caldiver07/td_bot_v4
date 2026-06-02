@@ -26,6 +26,12 @@ export function toggleAlgoVwap() {
     ui.updateSettings();
 }
 
+export function toggleAlgoScalp() {
+    const checkbox = document.getElementById('algo-scalp');
+    localStorage.setItem('v4_algo_scalp_enabled', checkbox.checked);
+    ui.updateSettings();
+}
+
 export function toggleAlgoFlat() {
     const checkbox = document.getElementById('algo-flat');
     localStorage.setItem('v4_algo_flat_enabled', checkbox.checked);
@@ -34,12 +40,20 @@ export function toggleAlgoFlat() {
 
 export function restoreAlgoSettings() {
     const vwapCheckbox = document.getElementById('algo-vwap');
+    const scalpCheckbox = document.getElementById('algo-scalp');
     const flatCheckbox = document.getElementById('algo-flat');
     
     if(vwapCheckbox) {
         let vwapState = localStorage.getItem('v4_algo_vwap_enabled');
         if (vwapState !== null) {
             vwapCheckbox.checked = (vwapState === 'true');
+        }
+    }
+    
+    if(scalpCheckbox) {
+        let scalpState = localStorage.getItem('v4_algo_scalp_enabled');
+        if (scalpState !== null) {
+            scalpCheckbox.checked = (scalpState === 'true');
         }
     }
     
@@ -190,6 +204,7 @@ export function exportToWindow() {
     window.saveClosingOrderMultiplier = saveClosingOrderMultiplier;
     window.toggleAlgoVwap = toggleAlgoVwap;
     window.toggleAlgoFlat = toggleAlgoFlat;
+    window.toggleAlgoScalp = toggleAlgoScalp;
     window.saveClosingTimeout = saveClosingTimeout;
 }
 exportToWindow();
