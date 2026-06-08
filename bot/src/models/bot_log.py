@@ -101,7 +101,7 @@ class BotLog:
             operations.append(doc)
 
         try:
-            resp = es_client.bulk(operations=operations)
+            resp = es_client.bulk(operations=operations, request_timeout=60)
 
             if resp.get('errors'):
                 first_error = None
@@ -110,11 +110,11 @@ class BotLog:
                     if index_result.get('error'):
                         first_error = index_result['error']
                         break
-                raise RuntimeError(f"Failed to index bot log records to Elasticsearch: {first_error}")
+                print(f"ERROR: Failed to index bot log records to Elasticsearch (API Error): {first_error}")
 
             return resp
         except Exception as e:
-            # Re-raise as RuntimeError for callers to handle easily
-            raise RuntimeError(f"Failed to index bot log records to Elasticsearch: {e}")
+            # Just print the error, do not crash the bot for an analytics/log failure
+            print(f"ERROR: Failed to index bot log records to Elasticsearch: {e}")
         finally:
             es_client.close()

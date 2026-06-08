@@ -1,7 +1,7 @@
 from datetime import datetime
 
 class Position:
-    def __init__(self, symbol, quantity, side, market_value, current_price, change_today):
+    def __init__(self, symbol, quantity, side, market_value, current_price, change_today, algo_type=None):
         self.symbol = symbol
         self.quantity = quantity
         self.side = side
@@ -11,6 +11,7 @@ class Position:
         self.position_date = datetime.utcnow()
         self.order_cancelled = False
         self.assumed = False
+        self.algo_type = algo_type
         
 
     def position_age(self) -> int:
@@ -29,7 +30,8 @@ class Position:
             'position_date': self.position_date.isoformat(),
             'order_cancelled': self.order_cancelled,
             'position_age': self.position_age(),
-            'assumed': self.assumed
+            'assumed': self.assumed,
+            'algo_type': self.algo_type
         }
 
 class Positions:

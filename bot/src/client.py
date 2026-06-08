@@ -9,6 +9,8 @@ import time
 import logging
 import datetime
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 import threading
 import pytz
 import urllib.parse
@@ -43,7 +45,16 @@ class Client:
         self._base_api_url = "https://api.schwabapi.com"                   # base url for the api
         self.timeout = timeout                                              # timeout to use in requests
         self.logger = logging.getLogger("Schwabdev")  # init the logger
-        self._session = requests.Session() if use_session else requests  # session to use in requests
+        
+        if use_session:
+            self._session = requests.Session()
+            retry = Retry(total=3, connect=3, read=3, backoff_factor=0.5, status_forcelist=[500, 502, 503, 504], allowed_methods=["GET", "POST", "PUT", "DELETE"])
+            adapter = HTTPAdapter(max_retries=retry)
+            self._session.mount('http://', adapter)
+            self._session.mount('https://', adapter)
+        else:
+            self._session = requests
+            
         self.tokens = Tokens(self, app_key, app_secret, callback_url, tokens_file, capture_callback, call_on_notify)
         self.stream = Stream(events, redis_client=redis_client)
         self.events = events
@@ -259,14 +270,20 @@ class Client:
         positions = Positions()
 
         api_start_time = datetime.now()
-        account_details = self._session.get(f'{self._base_api_url}/trader/v1/accounts/', headers={'Authorization': f'Bearer {self.tokens.access_token}'}, params=self._params_parser({'fields': fields}), timeout=self.timeout)
-        api_response_time = (datetime.now() - api_start_time).total_seconds() * 1000  # Convert to milliseconds
         
-        ### if it fails try again once
-        if account_details.status_code != 200:
-            api_start_time = datetime.now()
+        try:
             account_details = self._session.get(f'{self._base_api_url}/trader/v1/accounts/', headers={'Authorization': f'Bearer {self.tokens.access_token}'}, params=self._params_parser({'fields': fields}), timeout=self.timeout)
             api_response_time = (datetime.now() - api_start_time).total_seconds() * 1000  # Convert to milliseconds
+            
+            ### if it fails try again once
+            if account_details.status_code != 200:
+                api_start_time = datetime.now()
+                account_details = self._session.get(f'{self._base_api_url}/trader/v1/accounts/', headers={'Authorization': f'Bearer {self.tokens.access_token}'}, params=self._params_parser({'fields': fields}), timeout=self.timeout)
+                api_response_time = (datetime.now() - api_start_time).total_seconds() * 1000  # Convert to milliseconds
+                
+        except requests.exceptions.RequestException as e:
+            self.logger.error(f"Error fetching account positions: {e}")
+            return {"positions": {}, "stream": {}, "account": {}}
 
         self.events.add_event(event_type=f"account_positions", response_time=api_response_time)
 
@@ -298,16 +315,6 @@ class Client:
         ##### get positions
         positions_data = securitiesAccount.get('positions', [])
         
-        ### clear postions in charts (Except assumed ones which are waiting for API confirmation!)
-        for chart in self.stream.chart_list:
-            is_assumed = getattr(chart.position, 'assumed', False)
-            closing_filled = getattr(chart.order_closing, 'status', '') == 'FILLED'
-            assumed_timeout = True if (is_assumed and getattr(chart.position, 'position_age', lambda: 0)() > 30000) else False
-            
-            if not is_assumed or closing_filled or assumed_timeout:
-                chart.has_position = False
-                chart.position = None
-
         if positions_data:
             for pos in positions_data:
                 if pos['instrument']['assetType'] != 'EQUITY':
@@ -332,23 +339,7 @@ class Client:
                     current_price=pos.get('currentPrice', 0.0),
                     change_today=pos.get('changeToday', 0.0)
                 )
-
-                for chart in self.stream.chart_list:
-                    if chart.symbol == position.symbol:
-                        chart.position = position
-                        chart.has_position = True
-                        break
-
                 positions.add_position(position)
-
-        ### Now clear positions for charts that no longer have a matching position
-        for chart in self.stream.chart_list:
-            is_assumed = getattr(chart.position, 'assumed', False)
-            closing_filled = getattr(chart.order_closing, 'status', '') == 'FILLED'
-            assumed_timeout = True if (is_assumed and getattr(chart.position, 'position_age', lambda: 0)() > 30000) else False
-
-            if chart.has_position == False and (not is_assumed or closing_filled or assumed_timeout):
-                chart.position = None
 
         position_dict = positions.to_dict()
         stream_dict = self.stream.to_dict()
@@ -440,7 +431,19 @@ class Client:
         
         ### PLACE ORDER.....
         api_start_time = datetime.now()
-        res_data = self._session.post(f'{self._base_api_url}/trader/v1/accounts/{accountHash}/orders',headers={"Accept": "application/json",'Authorization': f'Bearer {self.tokens.access_token}',"Content-Type":"application/json"},json=order,timeout=self.timeout)
+        try:
+            res_data = self._session.post(
+                f'{self._base_api_url}/trader/v1/accounts/{accountHash}/orders',
+                headers={"Accept": "application/json", 'Authorization': f'Bearer {self.tokens.access_token}', "Content-Type": "application/json"},
+                json=order,
+                timeout=self.timeout
+            )
+        except requests.exceptions.RequestException as e:
+            self.events.add_event(event_type=f"place_order_failed_connection")
+            rtn['status'] = 'error'
+            rtn['message'] = f'Failed to place order due to connection error: {str(e)}'
+            return rtn
+
         api_response_time = (datetime.now() - api_start_time).total_seconds() * 1000  # Convert to milliseconds
         #### ADD EVENT FOR ALL CALLS REGUARDLESS OF SUCCESS.....
         self.events.add_event(event_type=f"order_api_limit_cnt", response_time=api_response_time)
@@ -449,7 +452,18 @@ class Client:
         if res_data.status_code == 429:
             self.events.add_event(event_type="rate_limit")
             sleep(10)
-            res_data = self._session.post(f'{self._base_api_url}/trader/v1/accounts/{accountHash}/orders',headers={"Accept": "application/json",'Authorization': f'Bearer {self.tokens.access_token}',"Content-Type":"application/json"},json=order,timeout=self.timeout)
+            try:
+                res_data = self._session.post(
+                    f'{self._base_api_url}/trader/v1/accounts/{accountHash}/orders',
+                    headers={"Accept": "application/json", 'Authorization': f'Bearer {self.tokens.access_token}', "Content-Type": "application/json"},
+                    json=order,
+                    timeout=self.timeout
+                )
+            except requests.exceptions.RequestException as e:
+                self.events.add_event(event_type=f"place_order_failed_connection")
+                rtn['status'] = 'error'
+                rtn['message'] = f'Failed to place order due to connection error: {str(e)}'
+                return rtn
             if res_data.status_code == 429:
                 self.events.add_event(event_type="rate_limit_2x")
 
@@ -467,6 +481,36 @@ class Client:
             rtn['message'] = 'Failed to place order'
             self.events.add_event(event_type=f"place_order_failed")
 
+        return rtn
+    
+    def replace_order(self, accountHash: str, orderId: int | str, order: dict) -> dict:
+        """
+        Replace an existing order for an account. The existing order will be replaced by the new order. Once replaced, the old order will be canceled and a new order will be created.
+
+        Args:
+            accountHash (str): account hash from account_linked()
+            orderId (int | str): order id
+            order (dict): order dictionary (format examples in github documentation)
+
+        Returns:
+            dict: response code
+        """
+        rtn = self._session.put(
+            f'{self._base_api_url}/trader/v1/accounts/{accountHash}/orders/{orderId}', 
+            headers={"Accept": "application/json", 'Authorization': f'Bearer {self.tokens.access_token}', "Content-Type": "application/json"},
+            json=order
+        )
+        if rtn.status_code in (200, 201):
+            rtn = {
+                'status': 'ok',
+                'message': 'Order replaced successfully'
+            }
+        else:
+            rtn = {
+                'status': 'error',
+                'message': f'Failed to replace order: HTTP {rtn.status_code}'
+            }
+            self.events.add_event(event_type=f"replace_order_failed")
         return rtn
     
     def _load_history(self):

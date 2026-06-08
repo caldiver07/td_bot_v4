@@ -3,6 +3,9 @@ from .order import Order
 from .position import Position
 from .stats import Stats
 from datetime import datetime
+import time
+import json
+import threading
 
 class Chart:
     def __init__(self, redis_client=None):
@@ -12,6 +15,7 @@ class Chart:
         self.stream_id = None
         self.symbol = None
         self.algo_type = None
+        self.algo_type_list = []
         self.bid = None
         self.bid_size = None
         self.ask = None
@@ -48,6 +52,9 @@ class Chart:
         self.update_order_opening_flag = False
         self.update_order_closing_flag = False
 
+        self.pending_open = False
+        self.pending_close = False
+
         self.can_short = False
 
         self.exit_position_count = 0
@@ -78,15 +85,16 @@ class Chart:
         def calc_delay(timestamp_str, format:str):
             try:
                 if format == "epoch":
-                    timestamp = datetime.utcfromtimestamp(float(timestamp_str))
-                    now = datetime.utcnow()
+                    now = time.time()
+                    delay = now - float(timestamp_str)
+                    return delay
                 else:
                     timestamp = datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S")
                     ## Adjust for local tiemzone if needed by comparing to current time
                     now = datetime.now()
+                    delay = (now - timestamp).total_seconds()
+                    return delay
                 
-                delay = (now - timestamp).total_seconds()
-                return delay
             except (ValueError, TypeError):
                 return None
             
@@ -116,26 +124,47 @@ class Chart:
         self.time_to_clear = data.get('time_to_clear') or 0.0
         self.vwap_distance_cents = data.get('vwap_distance_cents') or self.vwap_distance_cents
         self.avg_vwap_extension = data.get('avg_vwap_extension') or self.avg_vwap_extension
-        self.algo_type = data.get('algo_type') or ""
+        self.algo_type_list = data.get('algo_type_list') or []
+        self.algo_type = ""
 
         self.pause_orders = True
         self.paused_reason = ""
         
-        if "flat" in self.algo_type:
+        if "flat_short" in self.algo_type_list or "flat_long" in self.algo_type_list:
+            if "flat_short" in self.algo_type_list:
+                self.algo_type = "flat_short"
+            elif "flat_long" in self.algo_type_list:
+                self.algo_type = "flat_long"
             if not getattr(self, 'algo_flat_enabled', True):
                 self.pause_orders = True
                 self.paused_reason = "disabled flat algo "
             else:
                 self.pause_orders = False
                 self.paused_reason = ""
-        elif "vwap" in self.algo_type:
+        elif "vwap_long" in self.algo_type_list or "vwap_short" in self.algo_type_list:
+            if "vwap_long" in self.algo_type_list:
+                self.algo_type = "vwap_long"
+            elif "vwap_short" in self.algo_type_list:
+                self.algo_type = "vwap_short"
             if not getattr(self, 'algo_vwap_enabled', True):
                 self.pause_orders = True
                 self.paused_reason = "disabled vwap algo"
             else:
                 self.pause_orders = False
                 self.paused_reason = ""
-        elif self.algo_type:
+        elif "scalp_long" in self.algo_type_list or "scalp_short" in self.algo_type_list:
+            if "scalp_long" in self.algo_type_list:
+                self.algo_type = "scalp_long"
+            elif "scalp_short" in self.algo_type_list:
+                self.algo_type = "scalp_short"
+            if not getattr(self, 'algo_scalp_enabled', True):
+                self.pause_orders = True
+                self.paused_reason = "disabled scalp algo"
+            else:
+                self.pause_orders = False
+                self.paused_reason = ""
+        elif self.algo_type_list:
+            self.algo_type = self.algo_type_list[0]
             self.pause_orders = True
             self.paused_reason = "no algo type set"
 
@@ -146,6 +175,7 @@ class Chart:
             'stream_id': self.stream_id,
             'symbol': self.symbol,
             'algo_type': self.algo_type,
+            'algo_type_list': self.algo_type_list,
             'chart_time_delay': self.chart_time_delay,
             'set_time_delay': self.set_time_delay,
             'bid': self.bid,
@@ -164,6 +194,8 @@ class Chart:
             'stats': self.stats.to_dict() if self.stats else None,
             'pause_orders': self.pause_orders,
             'paused_reason': self.paused_reason,
+            'pending_open': getattr(self, 'pending_open', False),
+            'pending_close': getattr(self, 'pending_close', False),
             'order_opening': self.order_opening.to_dict() if self.order_opening else None,
             'order_closing': self.order_closing.to_dict() if self.order_closing else None,
             'position': self.position.to_dict() if self.position else None,
