@@ -295,23 +295,81 @@ class Bot:
 
         #### Instead of cancelling, we will replace the order...
         if self.replace_order_flag:
-            for acc, ord_id, cht in cancellations:
-                #### if chart algo is flat....
-                if cht.order_closing.side in ('BUY', 'BUY_TO_COVER'):
-                    price = cht.bid 
-                else:                    
-                    price = cht.ask
+            with ThreadPoolExecutor(max_workers=min(len(cancellations), 5)) as executor:
+                futures = {}
+                for acc, ord_id, cht in cancellations:
+                    #### if chart algo is flat....
+                    if cht.order_closing.algo_type and 'flat' in cht.order_closing.algo_type.lower():
+                        if cht.order_closing.side in ('BUY', 'BUY_TO_COVER'):
+                            price = cht.bid 
+                        else:                    
+                            price = cht.ask
 
-                if cht.order_closing.replace_order_count > 1:
-                    order_type = "MARKET"
-                else:
-                    order_type = "LIMIT"
-                quantity = cht.position.quantity
-                
-                replace_payload = self.replace_order_payload(price=price, quantity=quantity, symbol=cht.symbol, instruction=cht.order_closing.side, orderType=order_type)
-                
-                self.schwab_client.replace_order(accountHash=acc, orderId=ord_id, order=replace_payload)
-                cht.order_closing.replace_order_count += 1
+                        if cht.position and cht.position.replace_order_count > 1:
+                            order_type = "MARKET"
+                        else:
+                            order_type = "LIMIT"
+                        quantity = cht.position.quantity if cht.position else cht.order_closing.qty
+                        print(f"DEBUG: Replacing {cht.order_closing.side} Closing Order for {cht.symbol} bid:{cht.bid} / ask:{cht.ask} with Price: {price} / {cht.order_closing.price}, Quantity: {quantity}, Order Type: {order_type}")
+
+                        replace_payload = self.replace_order_payload(price=price, quantity=quantity, symbol=cht.symbol, instruction=cht.order_closing.side, orderType=order_type)
+                        future = executor.submit(self.schwab_client.replace_order, acc, ord_id, replace_payload)
+                        futures[future] = (ord_id, cht)
+                    
+                    elif cht.order_closing.algo_type and 'scalp' in cht.order_closing.algo_type.lower():
+                        price_gap = float(cht.ask) - float(cht.bid)
+                        price_offset = price_gap * 0.30 if price_gap > 0.05 else 0.01
+                        price_offset = round(price_offset, 2)
+                        if cht.order_closing.side in ('BUY', 'BUY_TO_COVER'):
+                            price = round(float(cht.bid) + .01, 2)
+                        else:                    
+                            price = round(float(cht.ask) - .01, 2)
+
+                        quantity = cht.position.quantity if cht.position else cht.order_closing.qty
+                        print(f"DEBUG: Replacing {cht.order_closing.side} Closing Order for {cht.symbol} with Price: {price} / {cht.order_closing.price}, Quantity: {quantity}")
+
+                        replace_payload = self.replace_order_payload(price=price, quantity=quantity, symbol=cht.symbol, instruction=cht.order_closing.side)
+                        future = executor.submit(self.schwab_client.replace_order, acc, ord_id, replace_payload)
+                        futures[future] = (ord_id, cht)
+                        
+                    else:
+                        # STANDARD GENERIC FALLBACK (in case algo_type is missing/different)
+                        if cht.order_closing.side in ('BUY', 'BUY_TO_COVER'):
+                            price = cht.bid 
+                        else:                    
+                            price = cht.ask
+
+                        if cht.position and cht.position.replace_order_count > 1:
+                            order_type = "MARKET"
+                        else:
+                            order_type = "LIMIT"
+                            
+                        quantity = cht.position.quantity if cht.position else cht.order_closing.qty
+                        print(f"DEBUG: Generic Replace {cht.order_closing.side} Closing Order for {cht.symbol} with Price: {price} / {cht.order_closing.price}, Quantity: {quantity}, Order Type: {order_type}")
+
+                        replace_payload = self.replace_order_payload(price=price, quantity=quantity, symbol=cht.symbol, instruction=cht.order_closing.side, orderType=order_type)
+                        future = executor.submit(self.schwab_client.replace_order, acc, ord_id, replace_payload)
+                        futures[future] = (ord_id, cht)
+
+                for future in as_completed(futures):
+                    ord_id, cht = futures[future]
+                    failed = False
+                    try:
+                        res_data = future.result()
+                        if res_data.get('status') != 'ok':
+                            failed = True
+                            print(f"DEBUG: Replacement rejected for {cht.symbol} ({ord_id}): {res_data.get('message', 'No message')}")
+                        else:
+                            if cht.position:
+                                cht.position.replace_order_count += 1
+                    except Exception as e:
+                        failed = True
+                        print(f"DEBUG: Replacement exception {e} for {cht.symbol} ({ord_id})")
+                        
+                    if failed:
+                        # Allow retry next loop so it's not permanently stuck!
+                        cht.order_closing.cancel_sent = False
+                        cht.order_closing.bot_status = 'Shift' if getattr(cht.order_closing, 'price_shift', False) else 'Timeout'
 
         else:
             with ThreadPoolExecutor(max_workers=min(len(cancellations), 5)) as executor:
@@ -408,14 +466,14 @@ class Bot:
             if cht.order_closing.bot_status == 'Countdown':
                 try:
                     if is_scalp:
-                        if cht.order_closing.side in ['BUY', 'BUY_TO_COVER'] and float(cht.bid) >= float(cht.order_opening.price):
+                        if cht.order_closing.side in ['BUY', 'BUY_TO_COVER'] and float(cht.bid) > float(cht.order_closing.price):
                             cht.order_closing.price_shift = True
                             cht.order_closing.bot_status = 'Shift'
-                            print(f"DEBUG: Scalp Closing {cht.order_closing.side} Shift Cancel for {cht.symbol} (Bid: {cht.bid} > Price: {cht.order_opening.price})")
-                        elif cht.order_closing.side in ['SELL', 'SELL_SHORT'] and float(cht.ask) <= float(cht.order_opening.price):
+                            print(f"DEBUG: Scalp Closing {cht.order_closing.side} Shift Cancel for {cht.symbol} (Bid: {cht.bid} > Price: {cht.order_closing.price})")
+                        elif cht.order_closing.side in ['SELL', 'SELL_SHORT'] and float(cht.ask) < float(cht.order_closing.price):
                             cht.order_closing.price_shift = True
                             cht.order_closing.bot_status = 'Shift'
-                            print(f"DEBUG: Scalp Closing {cht.order_closing.side} Shift Cancel for {cht.symbol} (Ask: {cht.ask} < Price: {cht.order_opening.price})")
+                            print(f"DEBUG: Scalp Closing {cht.order_closing.side} Shift Cancel for {cht.symbol} (Ask: {cht.ask} < Price: {cht.order_closing.price})")
                     else:
                         if cht.order_closing.side in ['BUY', 'BUY_TO_COVER'] and float(cht.bid) > float(cht.order_closing.price):
                             cht.order_closing.price_shift = True
@@ -477,12 +535,14 @@ class Bot:
             is_assumed = getattr(chart.position, 'assumed', False)
             closing_filled = getattr(chart.order_closing, 'status', '') == 'FILLED'
             
-            # Carry over algo_type from opening order
-            current_algo_type = getattr(chart.order_opening, 'algo_type', None)
+            # Carry over algo_type from position/opening order (single source of truth for the active trade)
+            current_algo_type = getattr(chart.position, 'algo_type', None) or getattr(chart.order_opening, 'algo_type', None) or getattr(chart, 'algo_type', None)
+            replace_order_count = getattr(chart.position, 'replace_order_count', 0) if getattr(chart, 'position', None) else 0
 
             # API is the single source of truth for positions.
             if api_pos:
                 api_pos.algo_type = current_algo_type
+                api_pos.replace_order_count = replace_order_count
                 # We have a real position from the API.
                 if is_assumed:
                     chart.position = api_pos
@@ -577,7 +637,7 @@ class Bot:
                     if exact_opening_match or valid_blank_adoption:
                         if exact_opening_match:
                             # Prevent Schwab's nested stale statuses from overwriting the real active status
-                            stale_backtrack = chart.order_opening.status in ['WORKING', 'FILLED', 'CANCELED'] and ord.status in ['AWAITING_PARENT_ORDER', 'QUEUED', 'PENDING_ACTIVATION']
+                            stale_backtrack = chart.order_opening.status in ['WORKING', 'FILLED', 'CANCELED', 'REPLACED'] and ord.status in ['AWAITING_PARENT_ORDER', 'QUEUED', 'PENDING_ACTIVATION']
                             if not stale_backtrack:
                                 chart.order_opening.update_order(ord)
                         else:
@@ -642,13 +702,13 @@ class Bot:
                     # First check for an exact match to our tracked active closing order ID
                     if exact_closing_match:
                         # Prevent Schwab's nested stale statuses from overwriting the real active status
-                        stale_backtrack = chart.order_closing.status in ['WORKING', 'FILLED', 'CANCELED'] and ord.status in ['AWAITING_PARENT_ORDER', 'QUEUED', 'PENDING_ACTIVATION']
+                        stale_backtrack = chart.order_closing.status in ['WORKING', 'FILLED', 'CANCELED', 'REPLACED'] and ord.status in ['AWAITING_PARENT_ORDER', 'QUEUED', 'PENDING_ACTIVATION']
                         if not stale_backtrack:
                             chart.order_closing.update_order(ord)
                         chart.update_order_closing_flag = True
                         
                         # Wipe dead orders from the slot so the bot can place a crisp new fallback closing order
-                        if chart.order_closing.status in ['REJECTED', 'CANCELED']:
+                        if chart.order_closing.status in ['REJECTED', 'CANCELED', 'REPLACED']:
                             # CRITICAL FIX: We MUST update the bot status to 'Ready'/'Rejected' BEFORE wiping the ID,
                             # otherwise the state machine freezes forever in 'Pending Verification'!
                             chart.order_closing.update_bot_status()
@@ -674,7 +734,7 @@ class Bot:
                     # DETERMINISTIC PATH: Only adopt if natively linked to our opening ID.
                     # HOWEVER, Schwab sometimes flattens active child orders after the parent fills, stripping the parent link.
                     # If we possess the position, and we find an active working closing order for this symbol while we have a blank slot, adopt it.
-                    orphaned_working_closing = (ord.status in ['WORKING', 'QUEUED'] and not chart.order_closing.order_id and getattr(chart, 'has_position', False))
+                    orphaned_working_closing = (ord.status in ['WORKING', 'QUEUED', 'PENDING_ACTIVATION', 'AWAITING_PARENT_ORDER'] and not chart.order_closing.order_id and getattr(chart, 'has_position', False))
                     orphaned_filled_closing = (ord.status == 'FILLED' and not chart.order_closing.order_id and getattr(chart.order_opening, 'entered_time', None) and str(ord.entered_time) > str(chart.order_opening.entered_time))
 
                     valid_blank_adoption_closing = parent_matches_active_trade or orphaned_working_closing or orphaned_filled_closing
@@ -683,14 +743,14 @@ class Bot:
                         
                         # Protect healthy tracking slots from being overwritten by delayed ghost messages 
                         # during a fuzzy match. Only allow exact ID matches to cancel a working/filled order.
-                        if chart.order_closing.status in ['WORKING', 'FILLED', 'QUEUED', 'AWAITING_PARENT_ORDER', 'PENDING_ACTIVATION'] and ord.status in ['CANCELED', 'REJECTED']:
+                        if chart.order_closing.status in ['WORKING', 'FILLED', 'QUEUED', 'AWAITING_PARENT_ORDER', 'PENDING_ACTIVATION', 'REPLACED'] and ord.status in ['CANCELED', 'REJECTED', 'REPLACED']:
                             continue
                             
                         # CRITICAL FIX for the "ghosting" rejection loops:
                         # If our bot just placed a fresh closing order (bot_status == 'Pending Verification') but hasn't received 
                         # the specific order_id yet from the thread pool, we absolutely CANNOT allow an old CANCELED/REJECTED 
                         # order from earlier to blindly map into this empty slot and pretend to be the newest order!
-                        if chart.order_closing.bot_status == 'Pending Verification' and ord.status in ['CANCELED', 'REJECTED']:
+                        if chart.order_closing.bot_status == 'Pending Verification' and ord.status in ['CANCELED', 'REJECTED', 'REPLACED']:
                             continue # Ignore ALL dead orders when we are explicitly waiting for a fresh live one
                             
                         # Safely inherit tracking flags before re-assigning so we don't duplicate stat counts
@@ -700,7 +760,7 @@ class Bot:
                         ord.order_filled_logged = chart.order_closing.order_filled_logged
                         ord.order_canceled = chart.order_closing.order_canceled
                         ord.order_canceled_logged = chart.order_closing.order_canceled_logged
-                        ord.algo_type = getattr(chart.order_closing, 'algo_type', getattr(chart, 'algo_type', None))
+                        ord.algo_type = getattr(chart.position, 'algo_type', None) or getattr(chart.order_opening, 'algo_type', None) or getattr(chart.order_closing, 'algo_type', None) or getattr(chart, 'algo_type', None)
                         
                         chart.order_closing = ord
                         chart.update_order_closing_flag = True
@@ -723,7 +783,7 @@ class Bot:
                             ord.order_filled_logged = chart.order_closing.order_filled_logged
                             ord.order_canceled = chart.order_closing.order_canceled
                             ord.order_canceled_logged = chart.order_closing.order_canceled_logged
-                            ord.algo_type = getattr(chart.order_closing, 'algo_type', getattr(chart, 'algo_type', None))
+                            ord.algo_type = getattr(chart.position, 'algo_type', None) or getattr(chart.order_opening, 'algo_type', None) or getattr(chart.order_closing, 'algo_type', None) or getattr(chart, 'algo_type', None)
                             chart.order_closing = ord
                             chart.order_closing.update_bot_status()
                             chart.order_closing.update_stats()
@@ -1281,51 +1341,6 @@ class Bot:
         }
         return order
 
-    def calc_replace_closing_order(self, chart):
-        ### Determine the price for the replacement order
-
-        if chart.order_closing.instruction in ['BUY']:
-            if 'scalp' in chart.algo_type:
-                price_gap = float(chart.ask) - float(chart.bid)
-                price_offset_bid = price_gap * 0.20 if price_gap > 0.05 else 0.01
-                price_offset_bid = round(price_offset_bid, 2)
-                price_offset = price_gap * 0.30 if price_gap > 0.05 else 0.01
-                price_offset = round(price_offset, 2)
-
-                child_price = round(float(chart.ask) - price_offset, 2)  # For scalping longs, set child price below bid to ensure it doesn't execute immediately
-                price = round(float(chart.bid) + price_offset_bid, 2)  # For scalping longs, price slightly above ask to increase fill probability
-            else:
-                child_price = float(chart.ask)
-                price = float(chart.bid)
-
-            # Enforce minimum 1-cent spread to avoid wash trades
-            if child_price <= price:
-                child_price = round(price + 0.01, 2)
-                print(f"DEBUG: Adjusted child_price for {chart.symbol} to avoid wash trade: {child_price}")
-                self.events.add_event(event_type="price_adjustment", symbol=chart.symbol)
-        else:
-            if 'scalp' in chart.algo_type:
-                price_gap = float(chart.ask) - float(chart.bid)
-                price_offset_ask = price_gap * 0.20 if price_gap > 0.05 else 0.01
-                price_offset_ask = round(price_offset_ask, 2)
-                price_offset = price_gap * 0.30 if price_gap > 0.05 else 0.01
-                price_offset = round(price_offset, 2)
-
-                child_price = round(float(chart.bid) + price_offset, 2)  # For scalping shorts, set child price above ask to ensure it doesn't execute immediately
-                price = round(float(chart.ask) - price_offset_ask, 2)  # For scalping shorts, price slightly below bid to increase fill probability
-            else:
-                child_price = float(chart.bid)
-                price = float(chart.ask)
-
-            # Enforce minimum 1-cent spread to avoid wash trades
-            if child_price >= price:
-                child_price = round(price - 0.01, 2)
-                print(f"DEBUG: Adjusted child_price for {chart.symbol} to avoid wash trade: {child_price}")
-                self.events.add_event(event_type="price_adjustment", symbol=chart.symbol)
-        
-        order_payload = self.replace_order_payload(price, chart.position.quantity, chart.symbol, instruction=chart.order_closing.instruction)
-        return order_payload
-
     def replace_order_payload(self, price, quantity, symbol, instruction="BUY", orderType="LIMIT"):
 
         # Determine session based on current time
@@ -1404,7 +1419,8 @@ class Bot:
                 order_payload = self.place_closing_order_payload(chart, instruction=instruction, qty=target_qty)
                 orders.append((chart, order_payload))
                 time_stamp = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S+0000')
-                chart.order_closing = Order("", chart.symbol, 0, entered_time=time_stamp, order_timeout=self.schwab_client.closing_timeout, stuck_timeout_mult=self.schwab_client.stuck_timeout_mult)
+                algo_to_use = getattr(chart.position, 'algo_type', None) or getattr(chart.order_opening, 'algo_type', None) or chart.algo_type
+                chart.order_closing = Order("", chart.symbol, 0, entered_time=time_stamp, order_timeout=self.schwab_client.closing_timeout, stuck_timeout_mult=self.schwab_client.stuck_timeout_mult, algo_type=algo_to_use)
                 chart.order_closing.bot_status = 'Pending Verification' # Instantly prevent spamming
                 chart.pending_close = True
                 chart.last_closing_order_time = time.time()
@@ -1427,7 +1443,8 @@ class Bot:
                 order_payload = self.place_closing_order_payload(chart, instruction=instruction)
                 orders.append((chart, order_payload))
                 time_stamp = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S+0000')
-                chart.order_closing = Order("", chart.symbol, 0, entered_time=time_stamp, order_timeout=self.schwab_client.closing_timeout, stuck_timeout_mult=self.schwab_client.stuck_timeout_mult)
+                algo_to_use = getattr(chart.position, 'algo_type', None) or getattr(chart.order_opening, 'algo_type', None) or chart.algo_type
+                chart.order_closing = Order("", chart.symbol, 0, entered_time=time_stamp, order_timeout=self.schwab_client.closing_timeout, stuck_timeout_mult=self.schwab_client.stuck_timeout_mult, algo_type=algo_to_use)
                 chart.order_closing.bot_status = 'Pending Verification' # Instantly prevent spamming
                 chart.pending_close = True
                 chart.last_closing_order_time = time.time()
@@ -1538,7 +1555,6 @@ class Bot:
         }
         return order
 
-    
     def calculate_status(self):
         ### Check to see were we are at...
         self.opening_status = 'closed' 
