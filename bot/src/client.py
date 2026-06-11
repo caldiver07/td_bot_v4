@@ -72,7 +72,7 @@ class Client:
 
         self.paused_charts_threshold = 50        # threshold for paused charts
         self.stuck_timeout_mult = 10              # multiplier for stuck timeout
-        self.order_api_count_limit = 3700
+        self.order_api_count_limit = 3500
         self.is_short = False
         
         # Spawns a thread to check the tokens and updates if necessary, also updates the session
@@ -495,11 +495,22 @@ class Client:
         Returns:
             dict: response code
         """
-        rtn = self._session.put(
-            f'{self._base_api_url}/trader/v1/accounts/{accountHash}/orders/{orderId}', 
-            headers={"Accept": "application/json", 'Authorization': f'Bearer {self.tokens.access_token}', "Content-Type": "application/json"},
-            json=order
-        )
+        api_start_time = datetime.now()
+        try:
+            rtn = self._session.put(
+                f'{self._base_api_url}/trader/v1/accounts/{accountHash}/orders/{orderId}', 
+                headers={"Accept": "application/json", 'Authorization': f'Bearer {self.tokens.access_token}', "Content-Type": "application/json"},
+                json=order
+            )
+        except requests.exceptions.RequestException as e:
+            self.events.add_event(event_type=f"replace_order_failed_connection")
+            return {
+                'status': 'error',
+                'message': f'Failed to replace order due to connection error: {str(e)}'
+            }
+        
+        api_response_time = (datetime.now() - api_start_time).total_seconds() * 1000  # Convert to milliseconds
+        self.events.add_event(event_type=f"order_api_limit_cnt", response_time=api_response_time)
         if rtn.status_code in (200, 201):
             rtn = {
                 'status': 'ok',

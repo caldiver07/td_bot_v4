@@ -2,7 +2,7 @@
 from datetime import datetime, timedelta
 
 class Order:
-    def __init__(self, order_id, symbol, qty, side="", type="", time_in_force="", status="", filled_qty=0, price=0, strategy_type="", parent_order_id="", parent_status="", entered_time=None, close_time=None, position_effect=None, order_timeout=6000, stuck_timeout_mult=4, algo_type=None, replace_order_count=0):
+    def __init__(self, order_id, symbol, qty, side="", type="", time_in_force="", status="", filled_qty=0, price=0, strategy_type="", parent_order_id="", parent_status="", entered_time=None, close_time=None, position_effect=None, order_timeout=6000, stuck_timeout_mult=4, algo_type=None):
         self.order_id = order_id
         self.algo_type = algo_type
         self.position_effect = position_effect
@@ -38,8 +38,6 @@ class Order:
         self.order_canceled_logged = False
         self.assumed_position_created = False
 
-        self.replace_order_count = replace_order_count
-
     def to_dict(self):
         return {
             'order_id': self.order_id,
@@ -62,8 +60,7 @@ class Order:
             'close_time': self._format_time(self.close_time),
             'fill_time_seconds': self.fill_time_seconds,
             'timeout_seconds': self.timeout_seconds,
-            'assumed_position_created': getattr(self, 'assumed_position_created', False),
-            'replace_order_count': getattr(self, 'replace_order_count', 0)
+            'assumed_position_created': getattr(self, 'assumed_position_created', False)
         }
 
     def _format_time(self, time_str):

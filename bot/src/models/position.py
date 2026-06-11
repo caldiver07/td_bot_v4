@@ -1,7 +1,7 @@
 from datetime import datetime
 
 class Position:
-    def __init__(self, symbol, quantity, side, market_value, current_price, change_today, algo_type=None):
+    def __init__(self, symbol, quantity, side, market_value, current_price, change_today, algo_type=None, replace_order_count=0):
         self.symbol = symbol
         self.quantity = quantity
         self.side = side
@@ -12,6 +12,7 @@ class Position:
         self.order_cancelled = False
         self.assumed = False
         self.algo_type = algo_type
+        self.replace_order_count = replace_order_count
         
 
     def position_age(self) -> int:
@@ -31,7 +32,8 @@ class Position:
             'order_cancelled': self.order_cancelled,
             'position_age': self.position_age(),
             'assumed': self.assumed,
-            'algo_type': self.algo_type
+            'algo_type': self.algo_type,
+            'replace_order_count': self.replace_order_count
         }
 
 class Positions:
