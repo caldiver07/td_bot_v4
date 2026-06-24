@@ -1,8 +1,9 @@
 :root {
     --color-green: #4caf4fbb;
     --color-red: #f44336c0;
-    --color-yellow: #ffc107c0;
+    --color-yellow: #ffe600c0;
     --color-blue: #4a91e2c0;
+    --color-orange: #ff9100dc;
 }
 body {
     font-family: Arial, sans-serif;

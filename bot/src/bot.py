@@ -305,7 +305,7 @@ class Bot:
                         else:                    
                             price = cht.ask
 
-                        if cht.position and cht.position.replace_order_count > 1:
+                        if cht.position and cht.position.replace_order_count > 0:
                             order_type = "MARKET"
                         else:
                             order_type = "LIMIT"
@@ -462,6 +462,8 @@ class Bot:
             is_flat = getattr(cht.order_closing, 'algo_type', None) and 'flat' in cht.order_closing.algo_type.lower()
 
             if (getattr(cht.order_closing, 'algo_type', None) and 'vwap' in cht.order_closing.algo_type.lower()) or cht.trade_order == False:
+                continue
+            if is_scalp:
                 continue
             if cht.order_closing.bot_status == 'Countdown':
                 try:
@@ -1054,7 +1056,7 @@ class Bot:
         if trade_orders:
             with ThreadPoolExecutor(max_workers=len(trade_orders)) as executor:
                 # Submit all orders simultaneously
-                future_to_order = {executor.submit(self.schwab_client.order_place, account_hash, ord_payload): chart for chart, ord_payload in trade_orders}
+                future_to_order = {executor.submit(self.schwab_client.order_place, account_hash, ord_payload, chart.algo_type): chart for chart, ord_payload in trade_orders}
                 
                 errors = []
                 # Process results as they complete
@@ -1094,8 +1096,10 @@ class Bot:
                 price_gap = float(chart.ask) - float(chart.bid)
                 price_offset_bid = price_gap * 0.20 if price_gap > 0.05 else 0.01
                 price_offset_bid = round(price_offset_bid, 2)
-                price_offset = price_gap * 0.30 if price_gap > 0.05 else 0.01
+                price_offset = price_gap * 0.50 if price_gap > 0.05 else 0.01
                 price_offset = round(price_offset, 2)
+                trailing_stop_offset = price_gap * 0.50 if price_gap > 0.05 else 0.10
+                trailing_stop_offset = round(trailing_stop_offset, 2)
 
                 child_price = round(float(chart.ask) - price_offset, 2)  # For scalping longs, set child price below bid to ensure it doesn't execute immediately
                 price = round(float(chart.bid) + price_offset_bid, 2)  # For scalping longs, price slightly above ask to increase fill probability
@@ -1113,8 +1117,10 @@ class Bot:
                 price_gap = float(chart.ask) - float(chart.bid)
                 price_offset_ask = price_gap * 0.20 if price_gap > 0.05 else 0.01
                 price_offset_ask = round(price_offset_ask, 2)
-                price_offset = price_gap * 0.30 if price_gap > 0.05 else 0.01
+                price_offset = price_gap * 0.50 if price_gap > 0.05 else 0.01
                 price_offset = round(price_offset, 2)
+                trailing_stop_offset = price_gap * 0.50 if price_gap > 0.05 else 0.10
+                trailing_stop_offset = round(trailing_stop_offset, 2)
 
                 child_price = round(float(chart.bid) + price_offset, 2)  # For scalping shorts, set child price above ask to ensure it doesn't execute immediately
                 price = round(float(chart.ask) - price_offset_ask, 2)  # For scalping shorts, price slightly below bid to increase fill probability
@@ -1136,6 +1142,16 @@ class Bot:
                     instruction=instruction,
                     price=price,
                     child_price=child_price,
+                    chart=chart
+                )
+            elif chart.algo_type and 'scalp' in chart.algo_type:
+                order_payload = self.limit_order_tigger_scalp_payload(
+                    symbol=chart.symbol,
+                    quantity=chart.quantity,
+                    instruction=instruction,
+                    price=price,
+                    child_price=child_price,
+                    trailing_stop_offset=trailing_stop_offset,
                     chart=chart
                 )
             else:
@@ -1176,6 +1192,69 @@ class Bot:
                     "assetType": "EQUITY"
                 }
             }
+            ]
+        }
+        return order
+    
+    def limit_order_tigger_scalp_payload(self, price, child_price, trailing_stop_offset, quantity, symbol, instruction="BUY", duration="DAY", chart=None):
+        # Determine session based on current time
+        session = utils.get_trading_session()
+        if instruction == 'BUY':
+            child_instruction = 'SELL'
+        elif instruction == 'SELL_SHORT':
+            child_instruction = 'BUY_TO_COVER'
+        elif instruction == 'SELL':
+            child_instruction = 'BUY'
+
+        order = {
+            "orderType": "LIMIT",
+            "session": session,
+            "duration": duration,
+            "price": price,
+            "orderStrategyType": "TRIGGER",
+            "orderLegCollection": [
+                {
+                    "instruction": instruction,
+                    "quantity": quantity,
+                    "instrument": { "symbol": symbol, "assetType": "EQUITY"}
+                }
+            ],
+            "childOrderStrategies": [
+                {
+                    "orderStrategyType": "OCO",
+                    "childOrderStrategies": [
+                        {
+                            "orderType": "LIMIT",
+                            "session": session,
+                            "price": child_price,
+                            "duration": duration,
+                            "orderStrategyType": "SINGLE",
+                            "orderLegCollection": [
+                                {
+                                    "instruction": child_instruction,
+                                    "quantity": quantity,
+                                    "instrument": {"symbol": symbol, "assetType": "EQUITY"}
+                                }
+                            ]
+                        },
+                        {
+                            "orderType": "TRAILING_STOP",
+                            "session": "NORMAL", # Stops generally only work in normal hours
+                            "stopPriceLinkBasis": "MARK",
+                            "stopPriceLinkType": "VALUE",
+                            "stopPriceOffset": trailing_stop_offset,
+                            "duration": duration,
+                            "orderStrategyType": "SINGLE",
+                            "orderLegCollection": [
+                                {
+                                    "instruction": child_instruction,
+                                    "quantity": quantity,
+                                    "instrument": {"symbol": symbol, "assetType": "EQUITY"}
+                                }
+                            ]
+                        }
+                    ]
+                }
             ]
         }
         return order
@@ -1457,7 +1536,7 @@ class Bot:
         if orders:
             with ThreadPoolExecutor(max_workers=min(len(orders), 5)) as executor:
                 # Submit all independent closing orders simultaneously
-                future_to_order = {executor.submit(self.schwab_client.order_place, account_hash, ord_payload): chart for chart, ord_payload in orders}
+                future_to_order = {executor.submit(self.schwab_client.order_place, account_hash, ord_payload, chart.algo_type): chart for chart, ord_payload in orders}
                 
                 errors = []
                 # Process results as they complete

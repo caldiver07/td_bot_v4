@@ -109,9 +109,22 @@
     color: var(--color-red); /* Red for cancelled orders */
 }
 
-.orders-table tr:not([data-status="FILLED"]):not([data-status="PENDING"]):not([data-status="CANCELED"]) td:nth-child(12) {
+.orders-table tr[data-status="REPLACED"] td:nth-child(12) {
+    color: var(--color-yellow); /* Yellow for replaced orders */
+}
+
+.orders-table tr[data-status="REJECTED"] td:nth-child(12) {
+    color: var(--color-orange); /* Orange for rejected orders */
+}
+
+.orders-table td[data-instruction="MARKET"] {
+    color: var(--color-orange); /* Orange for market orders */
+}
+
+.orders-table tr:not([data-status="FILLED"]):not([data-status="PENDING"]):not([data-status="CANCELED"]):not([data-status="REPLACED"]):not([data-status="REJECTED"]) td:nth-child(12) {
     color: var(--color-blue); /* Blue for working orders */
 }
+
 .buy {
     color: var(--color-green); /* Green for buy orders */
 }

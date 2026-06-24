@@ -89,7 +89,7 @@ export function generateOrdersTable(orders, isWorkingOrders = false) {
                     <td>${order.strategy_type || 'N/A'}</td>
                     <td>${order.qty || 'N/A'}</td>
                     <td>${price}</td>
-                    <td class="${instruction.toLowerCase()}">${instruction}</td>
+                    <td data-instruction="${instruction.toUpperCase()}">${instruction}</td>
                     <td>${order.orderType || order.type || 'N/A'}</td>
                     <td>${status}</td>
                 </tr>
@@ -146,7 +146,7 @@ export function generateEmptyOrdersTable() {
             </thead>
             <tbody>
                 <tr>
-                    <td colspan="12" class="table-empty-message">No working orders found</td>
+                    <td colspan="13" class="table-empty-message">No working orders found</td>
                 </tr>
             </tbody>
         </table>
