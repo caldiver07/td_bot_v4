@@ -29,16 +29,20 @@ class Stats:
         self.closing_order_count = 0
         self.closing_order_filled = 0
         self.closing_order_canceled = 0
+        self.closing_order_replaced = 0
         self.closing_order_filled_percent = 0.0
         self.closing_order_canceled_percent = 0.0
+        self.closing_order_replaced_percent = 0.0
 
         ### Rolling Clsing Order Stats
         self.closing_orders_history = deque(maxlen=self.rolling_size)  # Stores 'filled', 'canceled', or 'other'
         self.closing_order_count_rolling = 0
         self.closing_order_filled_rolling = 0
         self.closing_order_canceled_rolling = 0
+        self.closing_order_replaced_rolling = 0
         self.closing_order_filled_percent_rolling = 0.0
         self.closing_order_canceled_percent_rolling = 0.0
+        self.closing_order_replaced_percent_rolling = 0.0
         
         #### Time stats...... This is used to set how long a chart stays paused for.....
         self.started_date = datetime.utcnow()
@@ -68,8 +72,10 @@ class Stats:
         self.closing_order_count = 0
         self.closing_order_filled = 0
         self.closing_order_canceled = 0
+        self.closing_order_replaced = 0
         self.closing_order_filled_percent = 0.0
         self.closing_order_canceled_percent = 0.0
+        self.closing_order_replaced_percent = 0.0
 
     def reset_stats(self):
         # Rolling last 100 orders tracking
@@ -85,8 +91,10 @@ class Stats:
         self.closing_order_count_rolling = 0
         self.closing_order_filled_rolling = 0
         self.closing_order_canceled_rolling = 0
+        self.closing_order_replaced_rolling = 0
         self.closing_order_filled_percent_rolling = 0.0
         self.closing_order_canceled_percent_rolling = 0.0
+        self.closing_order_replaced_percent_rolling = 0.0
        
         ### Reset Time Stuff.....
         self.started_date = datetime.utcnow()
@@ -197,6 +205,21 @@ class Stats:
 
         # if self.age > self.stat_age_reset_minutes:
         #     self.reset_stats()
+
+    def update_closing_replaced(self, chart):
+        self.closing_order_replaced += 1
+        self.closing_orders_history.append('replaced')
+        self._recalculate_rolling_closing_stats()
+        self.updated_date =  datetime.utcnow()
+        self.update_date_durations(chart)
+        self.update_closing_replaced_percent()
+        self.update_closing_filled_percent()
+        self.update_closing_canceled_percent()
+
+    def update_closing_replaced_percent(self):
+        if self.closing_order_count > 0:
+            self.closing_order_replaced_percent = round((self.closing_order_replaced / self.closing_order_count) * 100, 1)
+
 
     def load_dict(self):
         data = self.redis_client.get(f"stats_v4:{self.symbol}")
