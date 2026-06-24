@@ -20,13 +20,16 @@ class Event:
         
         self._lock = threading.Lock()
 
-    def add_event(self, event_type: str, symbol: Optional[str] = None, strategy_type: Optional[str] = None, position_effect: Optional[str] = None, chart_number: Optional[str] = None, order_type: Optional[str] = None, response_time: Optional[int] = 0, stream_id: Optional[str] = None, time_to_clear: Optional[float] = None):
+    def add_event(self, event_type: str, event_key: Optional[str] = None, order_id: Optional[str] = None, parent_order_id: Optional[str] = None, symbol: Optional[str] = None, strategy_type: Optional[str] = None, position_effect: Optional[str] = None, chart_number: Optional[str] = None, order_type: Optional[str] = None, response_time: Optional[int] = 0, stream_id: Optional[str] = None, time_to_clear: Optional[float] = None, algo_type: Optional[str] = None, price: Optional[float] = None, child_order_price: Optional[float] = None, quantity: Optional[int] = None, instruction: Optional[str] = None, child_instruction: Optional[str] = None):
         event_date = datetime.utcnow()
         
         doc = {
             'event_id': str(uuid4()),
             'stream_id': stream_id,
             'event_type': event_type,
+            'event_key': event_key,
+            'order_id': order_id,
+            'parent_order_id': parent_order_id,
             'event_date': event_date.isoformat(),
             'symbol': symbol,
             'strategy_type': strategy_type,
@@ -34,7 +37,13 @@ class Event:
             'chart_number': chart_number,
             'order_type': order_type,
             'response_time': response_time,
-            'time_to_clear': time_to_clear
+            'time_to_clear': time_to_clear,
+            'algo_type': algo_type,
+            'price':price,
+            'child_order_price':child_order_price,
+            'quantity': quantity,
+            'instruction': instruction,
+            'child_instruction': child_instruction,
         }
 
         #### Update Counters safely
