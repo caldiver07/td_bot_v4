@@ -58,7 +58,8 @@ class Chart:
         self.can_short = False
 
         self.exit_position_count = 0
-
+        self.processed_events = set()
+        
         #### Transing indicators
         self.smart_direction = None
         self.spoofing_detected = 'no'
