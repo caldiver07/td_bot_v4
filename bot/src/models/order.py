@@ -36,6 +36,8 @@ class Order:
         self.order_filled_logged = False
         self.order_canceled = False
         self.order_canceled_logged = False
+        self.order_replaced = False
+        self.order_replaced_logged = False
         self.assumed_position_created = False
 
     def to_dict(self):
@@ -146,19 +148,74 @@ class Order:
         else:
             self.bot_status = 'Unknown'
 
-    def update_stats(self):
+    def update_stats(self, chart=None, events=None, order_type="opening", cnt=0):
+        """Update order state flags and log events immediately.
+        
+        Args:
+            chart: The Chart object this order belongs to (for stats & event tracking).
+            events: The Event manager for logging.
+            order_type: "opening" or "closing" to determine which stats/events to fire.
+            cnt: Zero-based index of the chart in chart_list (for chart_number label).
+        """
         if self.status in ['WORKING', 'AWAITING_PARENT_ORDER'] and self.order_placed_logged == False:
             self.order_placed = True
-            
+            if chart is not None and events is not None:
+                event_key = f"{order_type}_placed_{self.order_id}"
+                if event_key not in getattr(chart, 'processed_events', set()):
+                    chart.processed_events.add(event_key)
+                    if order_type == "opening":
+                        chart.stats.update_opening_order_count(chart)
+                        events.add_event(event_type="opening_order_placed", event_key=event_key, order_id=self.order_id, parent_order_id=self.parent_order_id, symbol=self.symbol, strategy_type=self.strategy_type, position_effect=self.position_effect, chart_number=f"chart-{cnt+1}", order_type=self.type, stream_id=getattr(chart, 'stream_id', ''), time_to_clear=getattr(chart, 'time_to_clear', 0), algo_type=getattr(self, 'algo_type', ''), price=self.price, quantity=self.qty)
+                    else:
+                        chart.stats.update_closing_order_count(chart)
+                        events.add_event(event_type="closing_order_placed", event_key=event_key, order_id=self.order_id, parent_order_id=self.parent_order_id, symbol=self.symbol, strategy_type=self.strategy_type, position_effect=self.position_effect, chart_number=f"chart-{cnt+1}", order_type=self.type, stream_id=getattr(chart, 'stream_id', ''), time_to_clear=getattr(chart, 'time_to_clear', 0), algo_type=getattr(self, 'algo_type', ''), price=self.price, quantity=self.qty)
+            self.order_placed_logged = True
+
         if self.status == 'FILLED' and self.order_filled_logged == False:
             self.order_filled = True
             if self.order_placed == False and self.order_placed_logged == False:
                 self.order_placed = True
-                
+            if chart is not None and events is not None:
+                event_key = f"{order_type}_filled_{self.order_id}"
+                if event_key not in getattr(chart, 'processed_events', set()):
+                    chart.processed_events.add(event_key)
+                    if order_type == "opening":
+                        chart.stats.update_opening_filled(chart)
+                        events.add_event(event_type="opening_order_filled", event_key=event_key, order_id=self.order_id, parent_order_id=self.parent_order_id, symbol=self.symbol, strategy_type=self.strategy_type, position_effect=self.position_effect, chart_number=f"chart-{cnt+1}", order_type=self.type, stream_id=getattr(chart, 'stream_id', ''), time_to_clear=getattr(chart, 'time_to_clear', 0), algo_type=getattr(self, 'algo_type', ''), price=self.price, quantity=self.qty)
+                    else:
+                        chart.stats.update_closing_filled(chart)
+                        chart.exit_position_count = 0  # Reset on successful fill
+                        events.add_event(event_type="closing_order_filled", event_key=event_key, order_id=self.order_id, parent_order_id=self.parent_order_id, symbol=self.symbol, strategy_type=self.strategy_type, position_effect=self.position_effect, chart_number=f"chart-{cnt+1}", order_type=self.type, stream_id=getattr(chart, 'stream_id', ''), time_to_clear=getattr(chart, 'time_to_clear', 0), algo_type=getattr(self, 'algo_type', ''), price=self.price, quantity=self.qty)
+            self.order_filled_logged = True
+
         if self.status == 'CANCELED' and self.order_canceled_logged == False:
             self.order_canceled = True
             if self.order_placed == False and self.order_placed_logged == False:
                 self.order_placed = True
+            if chart is not None and events is not None:
+                event_key = f"{order_type}_canceled_{self.order_id}"
+                if event_key not in getattr(chart, 'processed_events', set()):
+                    chart.processed_events.add(event_key)
+                    if order_type == "opening":
+                        chart.stats.update_opening_canceled(chart)
+                        events.add_event(event_type="opening_order_canceled", event_key=event_key, order_id=self.order_id, parent_order_id=self.parent_order_id, symbol=self.symbol, strategy_type=self.strategy_type, position_effect=self.position_effect, chart_number=f"chart-{cnt+1}", order_type=self.type, stream_id=getattr(chart, 'stream_id', ''), time_to_clear=getattr(chart, 'time_to_clear', 0), algo_type=getattr(self, 'algo_type', ''), price=self.price, quantity=self.qty)
+                    else:
+                        chart.stats.update_closing_canceled(chart)
+                        events.add_event(event_type="closing_order_canceled", event_key=event_key, order_id=self.order_id, parent_order_id=self.parent_order_id, symbol=self.symbol, strategy_type=self.strategy_type, position_effect=self.position_effect, chart_number=f"chart-{cnt+1}", order_type=self.type, stream_id=getattr(chart, 'stream_id', ''), time_to_clear=getattr(chart, 'time_to_clear', 0), algo_type=getattr(self, 'algo_type', ''), price=self.price, quantity=self.qty)
+            self.order_canceled_logged = True
+
+        if self.status == 'REPLACED' and self.order_replaced_logged == False:
+            self.order_replaced = True
+            if self.order_placed == False and self.order_placed_logged == False:
+                self.order_placed = True
+            if chart is not None and events is not None:
+                event_key = f"{order_type}_replaced_{self.order_id}"
+                if event_key not in getattr(chart, 'processed_events', set()):
+                    chart.processed_events.add(event_key)
+                    if order_type == "closing":
+                        chart.stats.update_closing_replaced(chart)
+                        events.add_event(event_type="closing_order_replaced", event_key=event_key, order_id=self.order_id, parent_order_id=self.parent_order_id, symbol=self.symbol, strategy_type=self.strategy_type, position_effect=self.position_effect, chart_number=f"chart-{cnt+1}", order_type=self.type, stream_id=getattr(chart, 'stream_id', ''), time_to_clear=getattr(chart, 'time_to_clear', 0), algo_type=getattr(self, 'algo_type', ''), price=self.price, quantity=self.qty)
+            self.order_replaced_logged = True
 
 class Orders:
 

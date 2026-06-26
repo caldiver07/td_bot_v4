@@ -415,7 +415,7 @@ class Client:
             return rtn
         
         ###### If at limit do not place any more orders... But just for buy orders... let system finish open positions...
-        if self.events.order_api_count > self.order_api_count_limit and order_instruction in ["BUY", "SELL_SHORT"] and not 'SCALP' in algo_type:
+        if self.events.order_api_count > self.order_api_count_limit and order_instruction in ["BUY", "SELL_SHORT"] and not 'scalp' in algo_type:
             rtn['message'] = "ORDER_LIMIT_REACHED"
             rtn['status'] = 'warning'
             sleep(5)

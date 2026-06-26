@@ -607,7 +607,6 @@ class Bot:
                     orders.add_order(cc_ord)
                     self._update_charts(cc_ord)
         
-        self._update_Stats()
         return orders.to_dict()
 
     def _update_charts(self, order_data: dict):
@@ -617,7 +616,7 @@ class Bot:
         Args:
             order_data (dict): order data to update charts with
         """
-        for chart in self.schwab_client.stream.chart_list:
+        for cnt, chart in enumerate(self.schwab_client.stream.chart_list):
             if chart.symbol == order_data.symbol:
                 ord = order_data
                 
@@ -643,18 +642,27 @@ class Bot:
                             if not stale_backtrack:
                                 chart.order_opening.update_order(ord)
                         else:
-                            ord.order_placed = chart.order_opening.order_placed
-                            ord.order_placed_logged = chart.order_opening.order_placed_logged
-                            ord.order_filled = chart.order_opening.order_filled
-                            ord.order_filled_logged = chart.order_opening.order_filled_logged
-                            ord.order_canceled = chart.order_opening.order_canceled
-                            ord.order_canceled_logged = chart.order_opening.order_canceled_logged
+                            # Reset _logged flags if this is a new order ID (brand new order needs its own events)
+                            if ord.order_id and str(ord.order_id) != str(chart.order_opening.order_id):
+                                ord.order_placed = False
+                                ord.order_placed_logged = False
+                                ord.order_filled = False
+                                ord.order_filled_logged = False
+                                ord.order_canceled = False
+                                ord.order_canceled_logged = False
+                            else:
+                                ord.order_placed = chart.order_opening.order_placed
+                                ord.order_placed_logged = chart.order_opening.order_placed_logged
+                                ord.order_filled = chart.order_opening.order_filled
+                                ord.order_filled_logged = chart.order_opening.order_filled_logged
+                                ord.order_canceled = chart.order_opening.order_canceled
+                                ord.order_canceled_logged = chart.order_opening.order_canceled_logged
                             ord.algo_type = getattr(chart.order_opening, 'algo_type', getattr(chart, 'algo_type', None))
                             ord.assumed_position_created = getattr(chart.order_opening, 'assumed_position_created', False)
                             chart.order_opening = ord
                             
                         chart.order_opening.update_bot_status()
-                        chart.order_opening.update_stats()
+                        chart.order_opening.update_stats(chart=chart, events=self.events, order_type="opening", cnt=cnt)
                         
                         # ID-Based validation context: IF the open order fills, put in a local placeholder position
                         # waiting for Charles Schwab verification.
@@ -674,17 +682,26 @@ class Bot:
                         break # Successfully mapped
                     elif chart.update_order_opening_flag == True:
                         if ord.status in ['WORKING', 'AWAITING_PARENT_ORDER', 'QUEUED', 'PENDING_ACTIVATION'] and chart.order_opening.status not in ['WORKING', 'AWAITING_PARENT_ORDER', 'QUEUED', 'PENDING_ACTIVATION']:
-                            ord.order_placed = chart.order_opening.order_placed
-                            ord.order_placed_logged = chart.order_opening.order_placed_logged
-                            ord.order_filled = chart.order_opening.order_filled
-                            ord.order_filled_logged = chart.order_opening.order_filled_logged
-                            ord.order_canceled = chart.order_opening.order_canceled
-                            ord.order_canceled_logged = chart.order_opening.order_canceled_logged
+                            # Reset _logged flags if this is a new order ID (brand new order needs its own events)
+                            if ord.order_id and str(ord.order_id) != str(chart.order_opening.order_id):
+                                ord.order_placed = False
+                                ord.order_placed_logged = False
+                                ord.order_filled = False
+                                ord.order_filled_logged = False
+                                ord.order_canceled = False
+                                ord.order_canceled_logged = False
+                            else:
+                                ord.order_placed = chart.order_opening.order_placed
+                                ord.order_placed_logged = chart.order_opening.order_placed_logged
+                                ord.order_filled = chart.order_opening.order_filled
+                                ord.order_filled_logged = chart.order_opening.order_filled_logged
+                                ord.order_canceled = chart.order_opening.order_canceled
+                                ord.order_canceled_logged = chart.order_opening.order_canceled_logged
                             ord.algo_type = getattr(chart.order_opening, 'algo_type', getattr(chart, 'algo_type', None))
                             ord.assumed_position_created = getattr(chart.order_opening, 'assumed_position_created', False)
                             chart.order_opening = ord
                             chart.order_opening.update_bot_status()
-                            chart.order_opening.update_stats()
+                            chart.order_opening.update_stats(chart=chart, events=self.events, order_type="opening", cnt=cnt)
                             
                             # ID-Based validation context: IF the open order fills, put in a local placeholder position
                             # waiting for Charles Schwab verification.
@@ -714,7 +731,7 @@ class Bot:
                             # CRITICAL FIX: We MUST update the bot status to 'Ready'/'Rejected' BEFORE wiping the ID,
                             # otherwise the state machine freezes forever in 'Pending Verification'!
                             chart.order_closing.update_bot_status()
-                            chart.order_closing.update_stats()
+                            chart.order_closing.update_stats(chart=chart, events=self.events, order_type="closing", cnt=cnt)
                             
                             chart.order_closing.order_id = ""
                             chart.order_closing.entered_time = None
@@ -726,7 +743,7 @@ class Bot:
                                 
                         if chart.update_order_closing_flag:
                             chart.order_closing.update_bot_status()
-                            chart.order_closing.update_stats()
+                            chart.order_closing.update_stats(chart=chart, events=self.events, order_type="closing", cnt=cnt)
                         break # Successfully mapped exactly what we were tracking
 
                     # If we don't have an exact ID match, ONLY map this order to our active tracker IF:
@@ -743,6 +760,12 @@ class Bot:
                     
                     if not chart.update_order_closing_flag and valid_blank_adoption_closing:
                         
+                        # Log REPLACED same-family orders via update_stats (keeps all event logic in order.py)
+                        if ord.status == 'REPLACED':
+                            ord.algo_type = getattr(chart.position, 'algo_type', None) or getattr(chart.order_opening, 'algo_type', None) or getattr(chart.order_closing, 'algo_type', None) or getattr(chart, 'algo_type', None)
+                            ord.update_stats(chart=chart, events=self.events, order_type="closing", cnt=cnt)
+                            continue
+                        
                         # Protect healthy tracking slots from being overwritten by delayed ghost messages 
                         # during a fuzzy match. Only allow exact ID matches to cancel a working/filled order.
                         if chart.order_closing.status in ['WORKING', 'FILLED', 'QUEUED', 'AWAITING_PARENT_ORDER', 'PENDING_ACTIVATION', 'REPLACED'] and ord.status in ['CANCELED', 'REJECTED', 'REPLACED']:
@@ -756,19 +779,30 @@ class Bot:
                             continue # Ignore ALL dead orders when we are explicitly waiting for a fresh live one
                             
                         # Safely inherit tracking flags before re-assigning so we don't duplicate stat counts
-                        ord.order_placed = chart.order_closing.order_placed
-                        ord.order_placed_logged = chart.order_closing.order_placed_logged
-                        ord.order_filled = chart.order_closing.order_filled
-                        ord.order_filled_logged = chart.order_closing.order_filled_logged
-                        ord.order_canceled = chart.order_closing.order_canceled
-                        ord.order_canceled_logged = chart.order_closing.order_canceled_logged
+                        # But reset _logged flags if this is a new order ID (brand new order needs its own events)
+                        if ord.order_id and str(ord.order_id) != str(chart.order_closing.order_id):
+                            ord.order_placed = False
+                            ord.order_placed_logged = False
+                            ord.order_filled = False
+                            ord.order_filled_logged = False
+                            ord.order_canceled = False
+                            ord.order_canceled_logged = False
+                            ord.order_replaced = False
+                            ord.order_replaced_logged = False
+                        else:
+                            ord.order_placed = chart.order_closing.order_placed
+                            ord.order_placed_logged = chart.order_closing.order_placed_logged
+                            ord.order_filled = chart.order_closing.order_filled
+                            ord.order_filled_logged = chart.order_closing.order_filled_logged
+                            ord.order_canceled = chart.order_closing.order_canceled
+                            ord.order_canceled_logged = chart.order_closing.order_canceled_logged
                         ord.algo_type = getattr(chart.position, 'algo_type', None) or getattr(chart.order_opening, 'algo_type', None) or getattr(chart.order_closing, 'algo_type', None) or getattr(chart, 'algo_type', None)
                         
                         chart.order_closing = ord
                         chart.update_order_closing_flag = True
                         
                         chart.order_closing.update_bot_status()
-                        chart.order_closing.update_stats()
+                        chart.order_closing.update_stats(chart=chart, events=self.events, order_type="closing", cnt=cnt)
                         break # Successfully fuzzy mapped
                         
                     elif chart.update_order_closing_flag == True:
@@ -779,16 +813,31 @@ class Bot:
                         
                         
                         if same_family and ord.status in ['WORKING', 'AWAITING_PARENT_ORDER', 'QUEUED', 'PENDING_ACTIVATION', 'FILLED'] and chart.order_closing.status not in ['WORKING', 'AWAITING_PARENT_ORDER', 'QUEUED', 'PENDING_ACTIVATION', 'FILLED']:
-                            ord.order_placed = chart.order_closing.order_placed
-                            ord.order_placed_logged = chart.order_closing.order_placed_logged
-                            ord.order_filled = chart.order_closing.order_filled
-                            ord.order_filled_logged = chart.order_closing.order_filled_logged
-                            ord.order_canceled = chart.order_closing.order_canceled
-                            ord.order_canceled_logged = chart.order_closing.order_canceled_logged
+                            # Reset _logged flags if this is a new order ID (brand new order needs its own events)
+                            if ord.order_id and str(ord.order_id) != str(chart.order_closing.order_id):
+                                ord.order_placed = False
+                                ord.order_placed_logged = False
+                                ord.order_filled = False
+                                ord.order_filled_logged = False
+                                ord.order_canceled = False
+                                ord.order_canceled_logged = False
+                            else:
+                                ord.order_placed = chart.order_closing.order_placed
+                                ord.order_placed_logged = chart.order_closing.order_placed_logged
+                                ord.order_filled = chart.order_closing.order_filled
+                                ord.order_filled_logged = chart.order_closing.order_filled_logged
+                                ord.order_canceled = chart.order_closing.order_canceled
+                                ord.order_canceled_logged = chart.order_closing.order_canceled_logged
                             ord.algo_type = getattr(chart.position, 'algo_type', None) or getattr(chart.order_opening, 'algo_type', None) or getattr(chart.order_closing, 'algo_type', None) or getattr(chart, 'algo_type', None)
                             chart.order_closing = ord
                             chart.order_closing.update_bot_status()
-                            chart.order_closing.update_stats()
+                            chart.order_closing.update_stats(chart=chart, events=self.events, order_type="closing", cnt=cnt)
+                            break
+
+                        # Log REPLACED same-family orders via update_stats (keeps all event logic in order.py)
+                        elif same_family and ord.status == 'REPLACED':
+                            ord.algo_type = getattr(chart.position, 'algo_type', None) or getattr(chart.order_opening, 'algo_type', None) or getattr(chart.order_closing, 'algo_type', None) or getattr(chart, 'algo_type', None)
+                            ord.update_stats(chart=chart, events=self.events, order_type="closing", cnt=cnt)
                             break
                             
         # ENFORCE STRICT DETERMINISTIC RULES at the end of the update cycle
@@ -872,62 +921,6 @@ class Bot:
             stuck_timeout_mult=self.schwab_client.stuck_timeout_mult
         )
         return order
-    
-    def _update_Stats(self):
-        for cnt, chart in enumerate(self.schwab_client.stream.chart_list):
-            if not hasattr(chart, 'processed_events'):
-                chart.processed_events = set()
-                
-            ### Opening Stats.....
-            if chart.order_opening.order_placed and chart.order_opening.order_placed_logged == False:
-                event_key = f"opening_placed_{chart.order_opening.order_id}"
-                if event_key not in chart.processed_events:
-                    chart.processed_events.add(event_key)
-                    chart.stats.update_opening_order_count(chart)
-                    self.events.add_event(event_type="opening_order_placed", symbol=chart.symbol, strategy_type=chart.order_opening.strategy_type, position_effect=chart.order_opening.position_effect, chart_number=f"chart-{cnt+1}", order_type=chart.order_opening.type, stream_id=chart.stream_id, time_to_clear=chart.time_to_clear)
-                chart.order_opening.order_placed_logged = True
-                
-            if chart.order_opening.order_filled and chart.order_opening.order_filled_logged == False:
-                event_key = f"opening_filled_{chart.order_opening.order_id}"
-                if event_key not in chart.processed_events:
-                    chart.processed_events.add(event_key)
-                    chart.stats.update_opening_filled(chart)
-                    self.events.add_event(event_type="opening_order_filled", symbol=chart.symbol, strategy_type=chart.order_opening.strategy_type, position_effect=chart.order_opening.position_effect, chart_number=f"chart-{cnt+1}", order_type=chart.order_opening.type, stream_id=chart.stream_id, time_to_clear=chart.time_to_clear)
-                chart.order_opening.order_filled_logged = True
-                
-            if chart.order_opening.order_canceled and chart.order_opening.order_canceled_logged == False:
-                event_key = f"opening_canceled_{chart.order_opening.order_id}"
-                if event_key not in chart.processed_events:
-                    chart.processed_events.add(event_key)
-                    chart.stats.update_opening_canceled(chart)
-                    self.events.add_event(event_type="opening_order_canceled", symbol=chart.symbol, strategy_type=chart.order_opening.strategy_type, position_effect=chart.order_opening.position_effect, chart_number=f"chart-{cnt+1}", order_type=chart.order_opening.type, stream_id=chart.stream_id, time_to_clear=chart.time_to_clear)
-                chart.order_opening.order_canceled_logged = True
-                
-            #### Closing Stats...
-            if chart.order_closing.order_placed and chart.order_closing.order_placed_logged == False:
-                event_key = f"closing_placed_{chart.order_closing.order_id}"
-                if event_key not in chart.processed_events:
-                    chart.processed_events.add(event_key)
-                    chart.stats.update_closing_order_count(chart)
-                    self.events.add_event(event_type="closing_order_placed", symbol=chart.symbol, strategy_type=chart.order_closing.strategy_type, position_effect=chart.order_closing.position_effect, chart_number=f"chart-{cnt+1}", order_type=chart.order_closing.type, stream_id=chart.stream_id, time_to_clear=chart.time_to_clear)
-                chart.order_closing.order_placed_logged = True
-                
-            if chart.order_closing.order_filled and chart.order_closing.order_filled_logged == False:
-                event_key = f"closing_filled_{chart.order_closing.order_id}"
-                if event_key not in chart.processed_events:
-                    chart.processed_events.add(event_key)
-                    chart.stats.update_closing_filled(chart)
-                    chart.exit_position_count = 0  # Reset on successful fill
-                    self.events.add_event(event_type="closing_order_filled", symbol=chart.symbol, strategy_type=chart.order_closing.strategy_type, position_effect=chart.order_closing.position_effect, chart_number=f"chart-{cnt+1}", order_type=chart.order_closing.type, stream_id=chart.stream_id, time_to_clear=chart.time_to_clear)
-                chart.order_closing.order_filled_logged = True
-                
-            if chart.order_closing.order_canceled and chart.order_closing.order_canceled_logged == False:
-                event_key = f"closing_canceled_{chart.order_closing.order_id}"
-                if event_key not in chart.processed_events:
-                    chart.processed_events.add(event_key)
-                    chart.stats.update_closing_canceled(chart)
-                    self.events.add_event(event_type="closing_order_canceled", symbol=chart.symbol, strategy_type=chart.order_closing.strategy_type, position_effect=chart.order_closing.position_effect, chart_number=f"chart-{cnt+1}", order_type=chart.order_closing.type, stream_id=chart.stream_id, time_to_clear=chart.time_to_clear)
-                chart.order_closing.order_canceled_logged = True
     
     def place_opening_order(self):
         
