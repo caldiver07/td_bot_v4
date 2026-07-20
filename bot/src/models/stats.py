@@ -234,6 +234,13 @@ class Stats:
         self.opening_order_filled_percent = data.get('opening_order_filled_percent', 0.0)
         self.opening_order_canceled_percent = data.get('opening_order_canceled_percent', 0.0)
 
+        # Sanity check: filled + canceled cannot exceed count
+        if self.opening_order_filled + self.opening_order_canceled > self.opening_order_count:
+            self.opening_order_count = self.opening_order_filled + self.opening_order_canceled
+            # Recalculate percentages
+            self.update_opening_filled_percent()
+            self.update_opening_canceled_percent()
+
         # Load rolling history
         history = data.get('opening_orders_history', [])
         self.opening_orders_history = deque(history, maxlen=self.rolling_size)
@@ -247,9 +254,19 @@ class Stats:
         self.closing_order_count = data.get('closing_order_count', 0)
         self.closing_order_filled = data.get('closing_order_filled', 0)
         self.closing_order_canceled = data.get('closing_order_canceled', 0)
+        self.closing_order_replaced = data.get('closing_order_replaced', 0)  # Was missing!
         self.closing_order_filled_percent = data.get('closing_order_filled_percent', 0.0)
         self.closing_order_canceled_percent = data.get('closing_order_canceled_percent', 0.0)
-        
+        self.closing_order_replaced_percent = data.get('closing_order_replaced_percent', 0.0)  # Was missing!
+
+        # Sanity check: filled + canceled + replaced cannot exceed count
+        if self.closing_order_filled + self.closing_order_canceled + self.closing_order_replaced > self.closing_order_count:
+            self.closing_order_count = self.closing_order_filled + self.closing_order_canceled + self.closing_order_replaced
+            # Recalculate percentages
+            self.update_closing_filled_percent()
+            self.update_closing_canceled_percent()
+            self.update_closing_replaced_percent()
+
         self.started_date = datetime.fromisoformat(data.get('started_date')) if data.get('started_date') else datetime.utcnow()
         self.updated_date = datetime.fromisoformat(data.get('updated_date')) if data.get('updated_date') else datetime.utcnow()
         self.duration = data.get('duration', None)
